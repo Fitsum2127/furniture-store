@@ -11,6 +11,8 @@ import ordersRouter from './routes/orders.js';
 import reviewsRouter from './routes/reviews.js';
 import newsletterRouter from './routes/newsletter.js';
 import messagesRouter from './routes/messages.js';
+import aboutRouter from './routes/about.js';
+import adminAboutRouter from './routes/adminAbout.js';
 import adminRouter from './routes/admin.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,6 +44,8 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/newsletter', newsletterRouter);
 app.use('/api/messages', messagesRouter);
+app.use('/api/about', aboutRouter);
+app.use('/api/admin/about', adminAboutRouter); // must stay above /api/admin
 app.use('/api/admin', adminRouter);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));

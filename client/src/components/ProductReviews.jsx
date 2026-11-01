@@ -96,7 +96,7 @@ export default function ProductReviews({ productId, initialReviews }) {
         date: new Date().toISOString().slice(0, 10),
         ratings,
         body: { en: body.trim(), am: body.trim() },
-        photos: [...previews],
+        photos: files.map((f) => URL.createObjectURL(f)),
       },
       ...prev,
     ]);
@@ -216,7 +216,7 @@ export default function ProductReviews({ productId, initialReviews }) {
                   key={r.id}
                   layout
                   initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
                   className="rounded-3xl border border-sand-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">

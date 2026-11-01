@@ -5,6 +5,7 @@ import { useLang } from '../context/LanguageContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useWishlist } from '../context/WishlistContext.jsx';
 import { onImgError } from '../lib/api.js';
+import { slow } from '../lib/motion.js';
 
 export default function ProductCard({ product, index = 0 }) {
   const { t, tr, money } = useLang();
@@ -27,20 +28,20 @@ export default function ProductCard({ product, index = 0 }) {
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.4, delay: Math.min(index, 5) * 0.06 }}
+      transition={slow(Math.min(index, 5) * 0.15)}
       className="group"
     >
-      <div className="relative overflow-hidden rounded-2xl bg-sand-100 dark:bg-stone-900">
+      <div className="relative overflow-hidden rounded-2xl bg-sand-100 transition-shadow duration-[1200ms] group-hover:shadow-xl dark:bg-stone-900">
         <Link to={`/product/${product.id}`} aria-label={tr(product.name)}>
           <img
             src={product.image}
             alt={tr(product.name)}
             loading="lazy"
             onError={onImgError}
-            className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105"
+            className="aspect-square w-full object-cover transition duration-[1800ms] ease-out group-hover:scale-110"
           />
         </Link>
         <button
@@ -60,7 +61,10 @@ export default function ProductCard({ product, index = 0 }) {
 
       <div className="flex items-start justify-between gap-2 pt-3">
         <div className="min-w-0">
-          <Link to={`/product/${product.id}`} className="block truncate text-sm font-medium hover:text-olive">
+          <Link
+            to={`/product/${product.id}`}
+            className="block truncate text-sm font-medium transition-colors duration-700 hover:text-olive"
+          >
             {tr(product.name)}
           </Link>
           <p className="mt-0.5 text-sm">

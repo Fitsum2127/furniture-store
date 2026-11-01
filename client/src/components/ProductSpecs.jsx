@@ -72,7 +72,7 @@ export default function ProductSpecs({ product, variantId, onSelectVariant }) {
         {/* Dimensions */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
+whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           viewport={{ once: true }}
           className="rounded-3xl border border-sand-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900"
         >
@@ -92,7 +92,7 @@ export default function ProductSpecs({ product, variantId, onSelectVariant }) {
           {/* Colors */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
+whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
             viewport={{ once: true }}
             className="rounded-3xl border border-sand-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900"
           >
@@ -112,7 +112,7 @@ export default function ProductSpecs({ product, variantId, onSelectVariant }) {
           {/* Material transparency */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
+whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
             viewport={{ once: true }}
             className="rounded-3xl border border-sand-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900"
           >

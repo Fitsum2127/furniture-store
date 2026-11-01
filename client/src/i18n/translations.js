@@ -80,3 +80,19 @@ Object.assign(translations.am, {
   errContact: 'ስልክ ቁጥር ወይም ኢሜይል ያስገቡ',
   errMsg: 'መልእክትዎን ይጻፉ',
 });
+Object.assign(translations.en, {
+  about: 'About',
+  aboutTitle: 'About us',
+  aboutSub: 'The story, the craft and the people behind every piece.',
+  aboutEmpty: 'Nothing here yet. Please check back soon.',
+  aboutCtaTitle: 'Ready to find your piece?',
+  aboutCtaText: 'Browse the collection or talk to our team.',
+});
+Object.assign(translations.am, {
+  about: 'ስለ እኛ',
+  aboutTitle: 'ስለ እኛ',
+  aboutSub: 'ከእያንዳንዱ ዕቃ በስተጀርባ ያለው ታሪክ፣ ጥበብና ሰዎች።',
+  aboutEmpty: 'እስካሁን ምንም የለም። እባክዎ በቅርቡ ይመለሱ።',
+  aboutCtaTitle: 'የሚሆንዎትን ዕቃ ለማግኘት ዝግጁ ነዎት?',
+  aboutCtaText: 'ስብስቡን ይመልከቱ ወይም ቡድናችንን ያናግሩ።',
+});

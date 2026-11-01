@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Store, ShoppingBag, Phone } from 'lucide-react';
+import { Home, Store, ShoppingBag, Phone, Info } from 'lucide-react';
 import { useLang } from '../context/LanguageContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 
@@ -28,6 +28,7 @@ export default function BottomNav() {
           </span>
         )}
       </button>
+      <NavLink to="/about" className={item}><Info size={21} />{t('about')}</NavLink>
       <NavLink to="/contact" className={item}><Phone size={21} />{t('contact')}</NavLink>
     </nav>
   );

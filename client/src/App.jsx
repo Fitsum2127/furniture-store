@@ -12,6 +12,7 @@ import ProductDetails from './pages/ProductDetails.jsx';
 import Checkout from './pages/Checkout.jsx';
 import OrderSuccess from './pages/OrderSuccess.jsx';
 import Contact from './pages/Contact.jsx';
+import About from './pages/About.jsx';
 import AdminLayout from './admin/AdminLayout.jsx';
 import AdminLogin from './admin/pages/AdminLogin.jsx';
 import Dashboard from './admin/pages/Dashboard.jsx';
@@ -21,6 +22,7 @@ import OrdersAdmin from './admin/pages/OrdersAdmin.jsx';
 import SubscribersAdmin from './admin/pages/SubscribersAdmin.jsx';
 import MessagesAdmin from './admin/pages/MessagesAdmin.jsx';
 import ReviewsAdmin from './admin/pages/ReviewsAdmin.jsx';
+import AboutAdmin from './admin/pages/AboutAdmin.jsx';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -58,6 +60,7 @@ export default function App() {
           <Route path="messages" element={<MessagesAdmin />} />
           <Route path="subscribers" element={<SubscribersAdmin />} />
           <Route path="reviews" element={<ReviewsAdmin />} />
+          <Route path="about" element={<AboutAdmin />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
@@ -76,6 +79,7 @@ export default function App() {
             <Route path="/product/:id" element={<ProductDetails />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/order/:id" element={<OrderSuccess />} />
+            <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

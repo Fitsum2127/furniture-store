@@ -62,7 +62,7 @@ export default function Contact() {
               rel="noreferrer"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
+              transition={{ delay: i * 0.2, duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-2xl border border-sand-200 bg-white p-6 text-center transition hover:border-olive dark:border-stone-800 dark:bg-stone-900"
             >
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sand-100 text-olive dark:bg-stone-800">

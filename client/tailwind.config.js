@@ -1,4 +1,3 @@
-// client/tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -20,6 +19,10 @@ export default {
           500: '#b08968',
         },
       },
+      // Every hover/color change on the site now takes 0.6 seconds and eases out gently.
+      // Make the numbers bigger for even slower hovers.
+      transitionDuration: { DEFAULT: '600ms' },
+      transitionTimingFunction: { DEFAULT: 'cubic-bezier(0.22, 1, 0.36, 1)' },
     },
   },
   plugins: [],

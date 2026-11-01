@@ -24,7 +24,7 @@ export default function ProductStory({ story, roomTips }) {
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5 }}
+      transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         className="mx-auto max-w-2xl text-center"
       >
         <h2 className="text-3xl font-semibold sm:text-4xl">{t('storyTitle')}</h2>
@@ -90,7 +90,7 @@ export default function ProductStory({ story, roomTips }) {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.4 }}
+              transition={{ delay: i * 0.2, duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-2xl bg-white p-5 dark:bg-stone-800"
             >
               <p className="font-semibold">{tr(tip.title)}</p>

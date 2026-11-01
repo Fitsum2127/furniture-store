@@ -1,5 +1,5 @@
 import { Link, NavLink, Navigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, MessageSquare, Mail, Star, LogOut, Store, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, MessageSquare, Mail, Star, Info, LogOut, Store, Sun, Moon } from 'lucide-react';
 import { useAdminAuth } from './AdminAuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { Loading } from './ui.jsx';
@@ -11,6 +11,7 @@ const LINKS = [
   { to: '/admin/messages', label: 'Messages', icon: MessageSquare },
   { to: '/admin/subscribers', label: 'Subscribers', icon: Mail },
   { to: '/admin/reviews', label: 'Reviews', icon: Star },
+  { to: '/admin/about', label: 'About page', icon: Info },
 ];
 
 export default function AdminLayout() {

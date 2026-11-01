@@ -19,6 +19,7 @@ export default function Footer() {
           <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-400">
             <li><Link to="/" className="hover:text-olive">{t('home')}</Link></li>
             <li><Link to="/shop" className="hover:text-olive">{t('shop')}</Link></li>
+            <li><Link to="/about" className="hover:text-olive">{t('about')}</Link></li>
             <li><Link to="/contact" className="hover:text-olive">{t('contact')}</Link></li>
           </ul>
         </div>
