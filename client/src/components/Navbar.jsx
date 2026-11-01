@@ -3,6 +3,7 @@ import { Sun, Moon, ShoppingBag, Languages } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useLang } from '../context/LanguageContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
+import { ShopDropdown } from './ShopMenus.jsx';
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
@@ -23,7 +24,7 @@ export default function Navbar() {
 
         <nav className="hidden items-center gap-8 md:flex">
           <NavLink to="/" className={linkClass} end>{t('home')}</NavLink>
-          <NavLink to="/shop" className={linkClass}>{t('shop')}</NavLink>
+          <ShopDropdown />
           <NavLink to="/about" className={linkClass}>{t('about')}</NavLink>
           <NavLink to="/contact" className={linkClass}>{t('contact')}</NavLink>
         </nav>

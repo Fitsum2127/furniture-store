@@ -96,3 +96,11 @@ Object.assign(translations.am, {
   aboutCtaTitle: 'የሚሆንዎትን ዕቃ ለማግኘት ዝግጁ ነዎት?',
   aboutCtaText: 'ስብስቡን ይመልከቱ ወይም ቡድናችንን ያናግሩ።',
 });
+Object.assign(translations.en, {
+  allProducts: 'All products',
+  browseByRoom: 'Browse by room',
+});
+Object.assign(translations.am, {
+  allProducts: 'ሁሉም ምርቶች',
+  browseByRoom: 'በክፍል ይምረጡ',
+});

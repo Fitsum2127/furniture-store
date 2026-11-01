@@ -52,6 +52,7 @@ export default function Shop() {
   );
   const cats = useFetch(() => api('/categories'), []);
   const products = (data || []).map(normalizeProduct);
+  const activeCat = (cats.data || []).find((c) => c.slug === category);
 
   const presets = [
     { id: 'any', min: '', max: '', label: t('anyPrice') },
@@ -170,7 +171,9 @@ export default function Shop() {
   return (
     <PageTransition>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-semibold sm:text-4xl">{t('shopTitle')}</h1>
+        <h1 className="text-3xl font-semibold sm:text-4xl">
+          {activeCat ? tr({ en: activeCat.name_en, am: activeCat.name_am }) : t('shopTitle')}
+        </h1>
         <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{t('shopSub')}</p>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
