@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Star, Trash2, Upload } from 'lucide-react';
 import useFetch from '../../hooks/useFetch.js';
+import { useLang } from '../../context/LanguageContext.jsx';
 import { onImgError } from '../../lib/api.js';
 import { adminApi } from '../adminApi.js';
-import { ErrorBox, Loading, PageHeader, btnGhost, btnPrimary, inputClass } from '../ui.jsx';
+import ActionMenu from '../ActionMenu.jsx';
+import { ErrorBox, Loading, PageHeader, btnGhost, btnPrimary, card, inputClass } from '../ui.jsx';
 
 const EMPTY = { sku: '', category_id: '', name_en: '', name_am: '', tagline_en: '', tagline_am: '', description_en: '', description_am: '', price: '', old_price: '', stock: '0', is_active: true, is_featured: false };
-
 const bi = { en: 'REPLACE ME', am: 'REPLACE ME' };
 const item = { icon: 'Sparkles', title: bi, text: bi };
 const EXAMPLE = {
@@ -30,6 +31,7 @@ function Field({ label, hint, children }) {
 }
 
 function VariantRow({ variant, onChanged, onError }) {
+  const { t } = useLang();
   const [v, setV] = useState({ name_en: variant.name_en, name_am: variant.name_am, hex_color: variant.hex_color, stock: String(variant.stock), is_active: Boolean(variant.is_active) });
   const body = () => JSON.stringify({ ...v, is_active: v.is_active ? 1 : 0 });
   const run = async (fn) => {
@@ -42,14 +44,16 @@ function VariantRow({ variant, onChanged, onError }) {
   };
   return (
     <li className="grid items-end gap-2 rounded-xl border border-sand-200 p-3 dark:border-stone-700 sm:grid-cols-[1fr_1fr_64px_90px_auto]">
-      <input value={v.name_en} onChange={(e) => setV({ ...v, name_en: e.target.value })} placeholder="Name (English)" aria-label="Variant name English" className={inputClass} />
-      <input value={v.name_am} onChange={(e) => setV({ ...v, name_am: e.target.value })} placeholder="Name (አማርኛ)" aria-label="Variant name Amharic" className={inputClass} />
-      <input type="color" value={v.hex_color} onChange={(e) => setV({ ...v, hex_color: e.target.value })} aria-label="Color" className="h-11 w-full rounded-xl border border-sand-300 dark:border-stone-700" />
-      <input type="number" min="0" value={v.stock} onChange={(e) => setV({ ...v, stock: e.target.value })} aria-label="Stock" className={inputClass} />
+      <input value={v.name_en} onChange={(e) => setV({ ...v, name_en: e.target.value })} placeholder={t('a_variantNameEn')} aria-label={t('a_variantNameEn')} className={inputClass} />
+      <input value={v.name_am} onChange={(e) => setV({ ...v, name_am: e.target.value })} placeholder={t('a_variantNameAm')} aria-label={t('a_variantNameAm')} className={inputClass} />
+      <input type="color" value={v.hex_color} onChange={(e) => setV({ ...v, hex_color: e.target.value })} aria-label={t('a_color')} className="h-11 w-full rounded-xl border border-sand-300 dark:border-stone-700" />
+      <input type="number" min="0" value={v.stock} onChange={(e) => setV({ ...v, stock: e.target.value })} aria-label={t('a_stock')} className={inputClass} />
       <div className="flex items-center gap-2">
-        <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={v.is_active} onChange={(e) => setV({ ...v, is_active: e.target.checked })} className="accent-olive" />Active</label>
-        <button type="button" onClick={() => run(() => adminApi(`/variants/${variant.id}`, { method: 'PUT', body: body() }))} className={btnGhost}>Save</button>
-        <button type="button" onClick={() => window.confirm('Delete this variant?') && run(() => adminApi(`/variants/${variant.id}`, { method: 'DELETE' }))} className={`${btnGhost} text-red-600`} aria-label="Delete variant"><Trash2 size={14} /></button>
+        <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={v.is_active} onChange={(e) => setV({ ...v, is_active: e.target.checked })} className="accent-olive" />{t('a_active')}</label>
+        <button type="button" onClick={() => run(() => adminApi(`/variants/${variant.id}`, { method: 'PUT', body: body() }))} className={btnGhost}>{t('a_save')}</button>
+        <ActionMenu
+          items={[{ label: t('a_delete'), icon: Trash2, danger: true, onClick: () => window.confirm(t('a_confirmDeleteVariant')) && run(() => adminApi(`/variants/${variant.id}`, { method: 'DELETE' })) }]}
+        />
       </div>
     </li>
   );
@@ -59,6 +63,7 @@ export default function ProductForm() {
   const { id } = useParams();
   const editing = Boolean(id);
   const navigate = useNavigate();
+  const { t } = useLang();
   const cats = useFetch(() => adminApi('/categories'), []);
 
   const [f, setF] = useState(EMPTY);
@@ -119,12 +124,12 @@ export default function ProductForm() {
   const save = async (e) => {
     e.preventDefault();
     setError('');
-    if (/REPLACE ME/i.test(detailsText)) return setError('The product details still contain "REPLACE ME". Fill them in or clear the details box.');
+    if (/REPLACE ME/i.test(detailsText)) return setError(t('a_errReplaceMe'));
     if (detailsText.trim()) {
       try {
         JSON.parse(detailsText);
       } catch (err) {
-        return setError('The product details are not valid JSON.');
+        return setError(t('a_errJson'));
       }
     }
     setSaving(true);
@@ -159,79 +164,85 @@ export default function ProductForm() {
   if (loading) return <Loading />;
   if (loadError) return <ErrorBox message={loadError} onRetry={load} />;
 
+  const sec = `${card} p-5`;
   return (
     <>
-      <PageHeader title={editing ? 'Edit product' : 'Add product'}>
-        <Link to="/admin/products" className={btnGhost}><ArrowLeft size={16} /> Back</Link>
+      <PageHeader title={editing ? t('a_editProductTitle') : t('a_addProductTitle')}>
+        <Link to="/admin/products" className={btnGhost}><ArrowLeft size={16} /> {t('a_back')}</Link>
       </PageHeader>
 
       <form onSubmit={save} className="max-w-4xl space-y-6">
-        <section className="grid gap-4 rounded-2xl border border-sand-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900 sm:grid-cols-2">
-          <Field label="Name (English) *"><input value={f.name_en} onChange={set('name_en')} required maxLength={200} className={inputClass} /></Field>
-          <Field label="Name (አማርኛ) *"><input value={f.name_am} onChange={set('name_am')} required maxLength={200} className={inputClass} /></Field>
-          <Field label="SKU (unique code) *" hint="Letters, numbers, dots, dashes and underscores only."><input value={f.sku} onChange={set('sku')} required className={inputClass} /></Field>
-          <Field label="Category *">
+        <section className={`${sec} grid gap-4 sm:grid-cols-2`}>
+          <Field label={t('a_nameEn')}><input value={f.name_en} onChange={set('name_en')} required maxLength={200} className={inputClass} /></Field>
+          <Field label={t('a_nameAm')}><input value={f.name_am} onChange={set('name_am')} required maxLength={200} className={inputClass} /></Field>
+          <Field label={t('a_sku')} hint={t('a_skuHint')}><input value={f.sku} onChange={set('sku')} required className={inputClass} /></Field>
+          <Field label={t('a_categoryStar')}>
             <select value={f.category_id} onChange={set('category_id')} required className={inputClass}>
-              <option value="">Choose...</option>
+              <option value="">{t('a_choose')}</option>
               {(cats.data || []).map((c) => <option key={c.id} value={c.id}>{c.name_en}</option>)}
             </select>
           </Field>
-          <Field label="Price (ETB) *"><input type="number" min="0" step="0.01" value={f.price} onChange={set('price')} required className={inputClass} /></Field>
-          <Field label="Old price (ETB)" hint="Optional. Must be higher than the price."><input type="number" min="0" step="0.01" value={f.old_price} onChange={set('old_price')} className={inputClass} /></Field>
-          <Field label="Stock" hint={hasVariants ? 'This product has variants. Stock is the total of the variants below.' : 'Number of units available.'}>
+          <Field label={t('a_priceStar')}><input type="number" min="0" step="0.01" value={f.price} onChange={set('price')} required className={inputClass} /></Field>
+          <Field label={t('a_oldPrice')} hint={t('a_oldPriceHint')}><input type="number" min="0" step="0.01" value={f.old_price} onChange={set('old_price')} className={inputClass} /></Field>
+          <Field label={t('a_stockLabel')} hint={hasVariants ? t('a_stockVarHint') : t('a_stockHint')}>
             <input type="number" min="0" value={hasVariants ? variants.filter((v) => v.is_active).reduce((s, v) => s + v.stock, 0) : f.stock} onChange={set('stock')} disabled={hasVariants} className={inputClass} />
           </Field>
           <div className="space-y-2 pt-6 text-sm font-medium">
-            <label className="flex items-center gap-3"><input type="checkbox" checked={f.is_active} onChange={(e) => setF((x) => ({ ...x, is_active: e.target.checked }))} className="h-4 w-4 accent-olive" />Visible in the shop</label>
-            <label className="flex items-center gap-3"><input type="checkbox" checked={f.is_featured} onChange={(e) => setF((x) => ({ ...x, is_featured: e.target.checked }))} className="h-4 w-4 accent-olive" />Featured on the home page</label>
+            <label className="flex items-center gap-3"><input type="checkbox" checked={f.is_active} onChange={(e) => setF((x) => ({ ...x, is_active: e.target.checked }))} className="h-4 w-4 accent-olive" />{t('a_visibleShop')}</label>
+            <label className="flex items-center gap-3"><input type="checkbox" checked={f.is_featured} onChange={(e) => setF((x) => ({ ...x, is_featured: e.target.checked }))} className="h-4 w-4 accent-olive" />{t('a_featuredHome')}</label>
           </div>
         </section>
 
-        <section className="grid gap-4 rounded-2xl border border-sand-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900 sm:grid-cols-2">
-          <Field label="Short tagline (English)"><input value={f.tagline_en} onChange={set('tagline_en')} maxLength={255} className={inputClass} /></Field>
-          <Field label="Short tagline (አማርኛ)"><input value={f.tagline_am} onChange={set('tagline_am')} maxLength={255} className={inputClass} /></Field>
-          <Field label="Description (English)"><textarea value={f.description_en} onChange={set('description_en')} rows={5} className={`${inputClass} resize-y`} /></Field>
-          <Field label="Description (አማርኛ)"><textarea value={f.description_am} onChange={set('description_am')} rows={5} className={`${inputClass} resize-y`} /></Field>
+        <section className={`${sec} grid gap-4 sm:grid-cols-2`}>
+          <Field label={t('a_taglineEn')}><input value={f.tagline_en} onChange={set('tagline_en')} maxLength={255} className={inputClass} /></Field>
+          <Field label={t('a_taglineAm')}><input value={f.tagline_am} onChange={set('tagline_am')} maxLength={255} className={inputClass} /></Field>
+          <Field label={t('a_descEn')}><textarea value={f.description_en} onChange={set('description_en')} rows={5} className={`${inputClass} resize-y`} /></Field>
+          <Field label={t('a_descAm')}><textarea value={f.description_am} onChange={set('description_am')} rows={5} className={`${inputClass} resize-y`} /></Field>
         </section>
 
-        <section className="rounded-2xl border border-sand-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
+        <section className={sec}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold">Specifications and story (optional)</h2>
-            <button type="button" onClick={() => setDetailsText(JSON.stringify(EXAMPLE, null, 2))} className={btnGhost}>Insert template</button>
+            <h2 className="font-semibold">{t('a_specsTitle')}</h2>
+            <button type="button" onClick={() => setDetailsText(JSON.stringify(EXAMPLE, null, 2))} className={btnGhost}>{t('a_insertTemplate')}</button>
           </div>
-          <p className="mt-1 text-xs text-stone-500">Dimensions, materials, fabric and craftsmanship text shown on the product page. Use the template, replace every REPLACE ME with the real facts, or leave this box empty to show nothing.</p>
+          <p className="mt-1 text-xs text-stone-500">{t('a_specsHint')}</p>
           <textarea value={detailsText} onChange={(e) => setDetailsText(e.target.value)} rows={detailsText ? 14 : 4} spellCheck={false} className={`${inputClass} mt-3 font-mono text-xs`} />
         </section>
 
         {editing && (
-          <section className="rounded-2xl border border-sand-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
-            <h2 className="font-semibold">Colors / options and their stock</h2>
-            <p className="mt-1 text-xs text-stone-500">Each option has its own stock. Customers cannot buy more than the stock of the option they choose.</p>
+          <section className={sec}>
+            <h2 className="font-semibold">{t('a_variantsTitle')}</h2>
+            <p className="mt-1 text-xs text-stone-500">{t('a_variantsHint')}</p>
             <ul className="mt-3 space-y-2">
               {variants.map((v) => <VariantRow key={`${v.id}-${v.stock}-${v.is_active}`} variant={v} onChanged={load} onError={setError} />)}
             </ul>
             <div className="mt-4 grid items-end gap-2 sm:grid-cols-[1fr_1fr_64px_90px_auto]">
-              <input value={newVariant.name_en} onChange={(e) => setNewVariant({ ...newVariant, name_en: e.target.value })} placeholder="New option (English)" aria-label="New option English" className={inputClass} />
-              <input value={newVariant.name_am} onChange={(e) => setNewVariant({ ...newVariant, name_am: e.target.value })} placeholder="New option (አማርኛ)" aria-label="New option Amharic" className={inputClass} />
-              <input type="color" value={newVariant.hex_color} onChange={(e) => setNewVariant({ ...newVariant, hex_color: e.target.value })} aria-label="Color" className="h-11 w-full rounded-xl border border-sand-300 dark:border-stone-700" />
-              <input type="number" min="0" value={newVariant.stock} onChange={(e) => setNewVariant({ ...newVariant, stock: e.target.value })} aria-label="Stock" className={inputClass} />
-              <button type="button" className={btnPrimary} onClick={() => act(async () => { await adminApi(`/products/${id}/variants`, { method: 'POST', body: JSON.stringify(newVariant) }); setNewVariant({ name_en: '', name_am: '', hex_color: '#d2b48c', stock: '0' }); })}>Add option</button>
+              <input value={newVariant.name_en} onChange={(e) => setNewVariant({ ...newVariant, name_en: e.target.value })} placeholder={t('a_newOptionEn')} aria-label={t('a_newOptionEn')} className={inputClass} />
+              <input value={newVariant.name_am} onChange={(e) => setNewVariant({ ...newVariant, name_am: e.target.value })} placeholder={t('a_newOptionAm')} aria-label={t('a_newOptionAm')} className={inputClass} />
+              <input type="color" value={newVariant.hex_color} onChange={(e) => setNewVariant({ ...newVariant, hex_color: e.target.value })} aria-label={t('a_color')} className="h-11 w-full rounded-xl border border-sand-300 dark:border-stone-700" />
+              <input type="number" min="0" value={newVariant.stock} onChange={(e) => setNewVariant({ ...newVariant, stock: e.target.value })} aria-label={t('a_stock')} className={inputClass} />
+              <button type="button" className={btnPrimary} onClick={() => act(async () => { await adminApi(`/products/${id}/variants`, { method: 'POST', body: JSON.stringify(newVariant) }); setNewVariant({ name_en: '', name_am: '', hex_color: '#d2b48c', stock: '0' }); })}>{t('a_addOption')}</button>
             </div>
           </section>
         )}
 
-        <section className="rounded-2xl border border-sand-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
-          <h2 className="font-semibold">Photos</h2>
-          <p className="mt-1 text-xs text-stone-500">JPG, PNG or WebP, up to 5 MB each. The first photo is the main one.</p>
+        <section className={sec}>
+          <h2 className="font-semibold">{t('a_photos')}</h2>
+          <p className="mt-1 text-xs text-stone-500">{t('a_photosHint')}</p>
           {images.length > 0 && (
             <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {images.map((img, i) => (
                 <li key={img.id} className="rounded-xl border border-sand-200 p-2 dark:border-stone-700">
                   <img src={img.url} alt="" onError={onImgError} className="aspect-square w-full rounded-lg object-cover" />
-                  <p className="mt-1 truncate text-xs text-stone-500">{img.variant_id ? (variants.find((v) => v.id === img.variant_id) || {}).name_en || 'Option' : 'All options'}</p>
+                  <p className="mt-1 truncate text-xs text-stone-500">{img.variant_id ? (variants.find((v) => v.id === img.variant_id) || {}).name_en || t('a_option') : t('a_allOptions')}</p>
                   <div className="mt-1 flex items-center justify-between">
-                    {i === 0 ? <span className="text-xs font-semibold text-olive">Main</span> : <button type="button" onClick={() => act(() => adminApi(`/products/${id}/images/${img.id}/primary`, { method: 'PATCH' }))} className="flex items-center gap-1 text-xs hover:text-olive"><Star size={12} /> Main</button>}
-                    <button type="button" onClick={() => window.confirm('Delete this photo?') && act(() => adminApi(`/products/${id}/images/${img.id}`, { method: 'DELETE' }))} aria-label="Delete photo" className="text-red-500"><Trash2 size={15} /></button>
+                    {i === 0 ? <span className="text-xs font-semibold text-olive">{t('a_main')}</span> : <span />}
+                    <ActionMenu
+                      items={[
+                        i > 0 && { label: t('a_makeMain'), icon: Star, onClick: () => act(() => adminApi(`/products/${id}/images/${img.id}/primary`, { method: 'PATCH' })) },
+                        { label: t('a_delete'), icon: Trash2, danger: true, onClick: () => window.confirm(t('a_confirmDeletePhoto')) && act(() => adminApi(`/products/${id}/images/${img.id}`, { method: 'DELETE' })) },
+                      ]}
+                    />
                   </div>
                 </li>
               ))}
@@ -242,28 +253,28 @@ export default function ProductForm() {
               {previews.map((src, i) => (
                 <li key={src} className="relative">
                   <img src={src} alt="" className="h-16 w-16 rounded-lg object-cover" />
-                  <button type="button" onClick={() => setFiles((x) => x.filter((_, idx) => idx !== i))} aria-label="Remove" className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-stone-800 text-xs text-white">×</button>
+                  <button type="button" onClick={() => setFiles((x) => x.filter((_, idx) => idx !== i))} aria-label={t('a_delete')} className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-stone-800 text-xs text-white">×</button>
                 </li>
               ))}
             </ul>
           )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <label className={`${btnGhost} cursor-pointer`}>
-              <Upload size={16} /> Choose photos
+              <Upload size={16} /> {t('a_choosePhotos')}
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => { setFiles((p) => [...p, ...Array.from(e.target.files || [])].slice(0, 8)); e.target.value = ''; }} className="hidden" />
             </label>
             {editing && variants.length > 0 && (
-              <select value={uploadVariant} onChange={(e) => setUploadVariant(e.target.value)} aria-label="Photos belong to" className={`${inputClass} w-56`}>
-                <option value="">Photos for all options</option>
-                {variants.map((v) => <option key={v.id} value={v.id}>Only for {v.name_en}</option>)}
+              <select value={uploadVariant} onChange={(e) => setUploadVariant(e.target.value)} aria-label={t('a_photosAll')} className={`${inputClass} w-56`}>
+                <option value="">{t('a_photosAll')}</option>
+                {variants.map((v) => <option key={v.id} value={v.id}>{t('a_onlyFor', { name: v.name_en })}</option>)}
               </select>
             )}
           </div>
         </section>
 
         {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
-        <button type="submit" disabled={saving} className={btnPrimary}>{saving ? 'Saving...' : editing ? 'Save changes' : 'Create product'}</button>
-        {!editing && <p className="text-xs text-stone-500">After creating the product you can add colors/options and their stock.</p>}
+        <button type="submit" disabled={saving} className={btnPrimary}>{saving ? t('a_saving') : editing ? t('a_saveChanges') : t('a_createProduct')}</button>
+        {!editing && <p className="text-xs text-stone-500">{t('a_afterCreate')}</p>}
       </form>
     </>
   );

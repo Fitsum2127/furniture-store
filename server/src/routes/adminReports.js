@@ -55,7 +55,7 @@ router.get('/reports/top-products', async (req, res) => {
        JOIN orders o ON o.id = oi.order_id
        LEFT JOIN products p ON p.id = oi.product_id
       WHERE o.status <> 'cancelled' AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-      GROUP BY oi.product_id, name_en
+      GROUP BY oi.product_id, oi.product_name_en, p.name_en
       ORDER BY units DESC
       LIMIT 10`,
     [days]
