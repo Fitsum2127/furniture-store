@@ -6,10 +6,12 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+// On a real host, point UPLOADS_DIR at a permanent disk (see the deployment guide at the end).
+export const uploadsDir = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.join(__dirname, '..', '..', 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
 
-// The file extension is chosen by the server from the verified type, never from the uploaded file name.
 const EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 
 const raw = multer({
@@ -23,15 +25,8 @@ const raw = multer({
 
 function detectType(buf) {
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
-  if (
-    buf.length >= 8 &&
-    buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-  ) {
-    return 'image/png';
-  }
-  if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
-    return 'image/webp';
-  }
+  if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
   return null;
 }
 
@@ -61,7 +56,6 @@ function collectFiles(req) {
   return req.file ? [req.file] : [];
 }
 
-// Checks the real file content (not only the type sent by the browser).
 async function verify(req, res, next) {
   try {
     const files = collectFiles(req);
@@ -95,8 +89,6 @@ function guard(middleware) {
     });
 }
 
-// Each helper returns a list of middleware, which Express accepts directly:
-// router.post('/', uploadImages.single('image'), handler)
 export const uploadImages = {
   single: (field) => [guard(raw.single(field)), verify],
   array: (field, max = 8) => [guard(raw.array(field, max)), verify],

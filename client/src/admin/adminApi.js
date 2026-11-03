@@ -1,4 +1,5 @@
 const KEY = 'adminToken';
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 export const getToken = () => localStorage.getItem(KEY);
 export const setToken = (token) => (token ? localStorage.setItem(KEY, token) : localStorage.removeItem(KEY));
@@ -9,7 +10,7 @@ export async function adminApi(path, options = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
   if (typeof options.body === 'string') headers['Content-Type'] = 'application/json';
 
-  const res = await fetch(`/api/admin${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}/api/admin${path}`, { ...options, headers });
 
   if (res.status === 401 && !path.startsWith('/login')) {
     setToken(null);

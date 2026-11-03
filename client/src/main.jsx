@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { LanguageProvider } from './context/LanguageContext.jsx';
+import { SettingsProvider } from './context/SettingsContext.jsx';
+import { CustomerAuthProvider } from './context/CustomerAuthContext.jsx';
 import { CartProvider } from './context/CartContext.jsx';
 import { WishlistProvider } from './context/WishlistContext.jsx';
 import { AdminAuthProvider } from './admin/AdminAuthContext.jsx';
@@ -14,13 +16,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <ThemeProvider>
         <LanguageProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <AdminAuthProvider>
-                <App />
-              </AdminAuthProvider>
-            </WishlistProvider>
-          </CartProvider>
+          <SettingsProvider>
+            <CustomerAuthProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <AdminAuthProvider>
+                    <App />
+                  </AdminAuthProvider>
+                </WishlistProvider>
+              </CartProvider>
+            </CustomerAuthProvider>
+          </SettingsProvider>
         </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>

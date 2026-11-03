@@ -2,6 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import pool from './config/db.js';
 import { apiLimiter } from './middleware/rateLimit.js';
 import { uploadsDir } from './middleware/upload.js';
@@ -17,14 +20,16 @@ import aboutRouter from './routes/about.js';
 import homeRouter from './routes/home.js';
 import settingsRouter, { adminSettingsRouter } from './routes/settings.js';
 import pagesRouter, { adminContentRouter } from './routes/pages.js';
+import { publicExtraRouter, adminExtraRouter } from './routes/extra.js';
+import seoRouter from './routes/seo.js';
 import adminAboutRouter from './routes/adminAbout.js';
 import adminRouter from './routes/admin.js';
 import adminCatalogRouter from './routes/adminCatalog.js';
 import adminReportsRouter from './routes/adminReports.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
 
-// Refuse to start in production with weak or missing secrets.
 const problems = [];
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) problems.push('JWT_SECRET (at least 32 characters)');
 if (!process.env.CUSTOMER_JWT_SECRET || process.env.CUSTOMER_JWT_SECRET.length < 32) problems.push('CUSTOMER_JWT_SECRET (at least 32 characters)');
@@ -41,19 +46,13 @@ if (problems.length) {
 
 const app = express();
 app.set('trust proxy', Number(process.env.TRUST_PROXY || 0));
-
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: false }));
 
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map((s) => s.trim().replace(/\/$/, ''))
   .filter(Boolean);
-app.use(
-  cors({
-    origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)),
-  })
-);
-
+app.use(cors({ origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)) }));
 app.use(express.json({ limit: '200kb' }));
 
 app.use(
@@ -67,6 +66,28 @@ app.use(
   })
 );
 
+// When the website and the API live on different addresses, image links in API answers get the full API address.
+const publicApi = (process.env.PUBLIC_API_URL || '').replace(/\/$/, '');
+function prefixUploads(v) {
+  if (typeof v === 'string') return v.startsWith('/uploads/') ? publicApi + v : v;
+  if (Array.isArray(v)) return v.map(prefixUploads);
+  if (v && typeof v === 'object' && !(v instanceof Date) && !Buffer.isBuffer(v)) {
+    const out = {};
+    Object.keys(v).forEach((k) => {
+      out[k] = prefixUploads(v[k]);
+    });
+    return out;
+  }
+  return v;
+}
+if (publicApi) {
+  app.use('/api', (_req, res, next) => {
+    const original = res.json.bind(res);
+    res.json = (body) => original(prefixUploads(body));
+    next();
+  });
+}
+
 app.use('/api', apiLimiter);
 
 app.get('/api/health', async (_req, res) => {
@@ -78,7 +99,6 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-// Public API
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/cart', cartRouter);
@@ -90,15 +110,27 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/about', aboutRouter);
 app.use('/api/home', homeRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/content', publicExtraRouter);
 app.use('/api/content', pagesRouter);
 
-// Admin API (every admin router checks the admin token itself)
 app.use('/api/admin/about', adminAboutRouter);
 app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin/content', adminContentRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin', adminCatalogRouter);
 app.use('/api/admin', adminReportsRouter);
+app.use('/api/admin', adminExtraRouter);
+
+app.use('/seo', seoRouter);
+app.use(seoRouter);
+
+// Optional: serve the built website from this same server (SERVE_CLIENT=1). One address for site, API and images.
+const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
+if (process.env.SERVE_CLIENT === '1' && fs.existsSync(clientDist)) {
+  app.use('/assets', express.static(path.join(clientDist, 'assets'), { maxAge: '365d', immutable: true }));
+  app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
+  app.get(/^\/(?!api\/|uploads\/|seo\/).*/, (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 

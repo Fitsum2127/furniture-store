@@ -1,0 +1,62 @@
+import { useState } from 'react';
+import useFetch from '../../hooks/useFetch.js';
+import { adminApi } from '../adminApi.js';
+import { ErrorBox, Loading, PageHeader, inputClass, money } from '../ui.jsx';
+
+export default function ReportsAdmin() {
+  const [period, setPeriod] = useState('day');
+  const sales = useFetch(() => adminApi(`/reports/sales?period=${period}`), [period]);
+  const top = useFetch(() => adminApi('/reports/top-products?days=30'), []);
+  const stats = useFetch(() => adminApi('/stats'), []);
+  const max = sales.data ? Math.max(1, ...sales.data.map((r) => r.revenue)) : 1;
+  const names = { day: 'last 30 days', week: 'last 12 weeks (week starts Monday)', month: 'last 12 months' };
+
+  return (
+    <>
+      <PageHeader title="Sales reports" subtitle="Revenue excludes cancelled orders">
+        <select value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Period" className={`${inputClass} w-44`}>
+          <option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option>
+        </select>
+      </PageHeader>
+
+      {stats.data && (
+        <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[['Today', money(stats.data.salesToday)], ['Last 7 days', money(stats.data.salesWeek)], ['Last 30 days', money(stats.data.salesMonth)], ['Paid revenue', money(stats.data.paidRevenue)],
+            ['Total orders', stats.data.totalOrders], ['New orders', stats.data.ordersByStatus.new || 0], ['Delivered', stats.data.ordersByStatus.delivered || 0], ['Cancelled', stats.data.ordersByStatus.cancelled || 0]].map(([k, v]) => (
+            <div key={k} className="rounded-2xl border border-sand-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900"><p className="text-xs text-stone-500">{k}</p><p className="mt-1 text-xl font-bold">{v}</p></div>
+          ))}
+        </div>
+      )}
+
+      <section className="rounded-2xl border border-sand-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
+        <h2 className="font-semibold">Sales, {names[period]}</h2>
+        {sales.loading ? <Loading /> : sales.error ? <ErrorBox message={sales.error} onRetry={sales.retry} /> : sales.data.length === 0 ? (
+          <p className="mt-4 text-sm text-stone-500">No orders in this period.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead><tr className="text-left text-xs text-stone-500"><th className="py-2">Period</th><th>Orders</th><th>Revenue</th><th>Paid</th><th>Cancelled</th><th className="w-1/3" /></tr></thead>
+              <tbody>
+                {sales.data.map((r) => (
+                  <tr key={r.label} className="border-t border-sand-200 dark:border-stone-800">
+                    <td className="py-2 font-medium">{r.label}</td><td>{r.orders}</td><td>{money(r.revenue)}</td><td>{money(r.paid)}</td><td>{r.cancelled}</td>
+                    <td><div className="h-2 rounded-full bg-sand-100 dark:bg-stone-800"><div className="h-2 rounded-full bg-olive" style={{ width: `${(r.revenue / max) * 100}%` }} /></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-sand-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
+        <h2 className="font-semibold">Top products, last 30 days</h2>
+        {top.data && top.data.length > 0 ? (
+          <ul className="mt-3 divide-y divide-sand-200 text-sm dark:divide-stone-800">
+            {top.data.map((p) => <li key={p.product_id} className="flex justify-between py-2"><span>{p.name_en}</span><span>{p.units} sold · {money(p.revenue)}</span></li>)}
+          </ul>
+        ) : <p className="mt-3 text-sm text-stone-500">No sales yet.</p>}
+      </section>
+    </>
+  );
+}
