@@ -13,6 +13,7 @@ export default function ProductCard({ product, index = 0 }) {
   const { has, toggle } = useWishlist();
   const liked = has(product.id);
   const soldOut = product.stock <= 0;
+  const needsOption = product.variantsCount > 0;
 
   const handleAdd = () => {
     addItem({
@@ -25,6 +26,9 @@ export default function ProductCard({ product, index = 0 }) {
       qty: 1,
     });
   };
+
+  const cartButtonClass =
+    'flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-olive text-white transition hover:bg-olive-dark active:scale-95';
 
   return (
     <motion.article
@@ -74,14 +78,27 @@ export default function ProductCard({ product, index = 0 }) {
             )}
           </p>
         </div>
-        <button
-          onClick={handleAdd}
-          disabled={soldOut}
-          aria-label={t('addToCart')}
-          className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-olive text-white transition hover:bg-olive-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <ShoppingCart size={16} />
-        </button>
+
+        {needsOption ? (
+          // Products with colors or options must be chosen on their own page.
+          <Link
+            to={`/product/${product.id}`}
+            aria-label={t('chooseOption')}
+            title={t('chooseOption')}
+            className={cartButtonClass}
+          >
+            <ShoppingCart size={16} />
+          </Link>
+        ) : (
+          <button
+            onClick={handleAdd}
+            disabled={soldOut}
+            aria-label={t('addToCart')}
+            className={`${cartButtonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            <ShoppingCart size={16} />
+          </button>
+        )}
       </div>
     </motion.article>
   );

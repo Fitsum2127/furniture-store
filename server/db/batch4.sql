@@ -23,7 +23,7 @@ INSERT INTO about_sections (title_en, title_am, body_en, body_am, image_url, sor
  'ፍሬሞቻችን በምድጃ ከደረቀ ጠንካራ እንጨት የተሠሩ ናቸው፤ ስለዚህ አይጣመሙም አይሰነጠቁምም።\nመገጣጠሚያዎች በእጅ ይገጠማሉ፣ እያንዳንዱ ጠርዝ ተፈጭቶ ይለሰልሳል፣ እያንዳንዱ ዕቃም በጠንካራ ሽፋን ይታሸጋል።',
  'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=1400&q=80', 1),
 ('Our Promise', 'ቃላችን',
- 'Free delivery inside the city and free assembly in your room.\nA 5-year warranty on wood frames and easy returns within 7 days if the item is unused.',
+ 'Free delivery inside the city and free assembly in your room.\nA 5-year warranty on wood frames and not within 7 days if the item is unused.',
  'በከተማ ውስጥ ነፃ ማድረስና በክፍልዎ ውስጥ ነፃ ገጠማ።\nለእንጨት ፍሬም የ5 ዓመት ዋስትና፤ ዕቃው ካልተጠቀሙበት በ7 ቀናት ውስጥ ቀላል መመለስ።',
  NULL, 2),
 ('Visit Our Showroom', 'ሾውሩማችንን ይጎብኙ',
