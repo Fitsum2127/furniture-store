@@ -29,6 +29,7 @@ import CustomersAdmin from './admin/pages/CustomersAdmin.jsx';
 import SubscribersAdmin from './admin/pages/SubscribersAdmin.jsx';
 import MessagesAdmin from './admin/pages/MessagesAdmin.jsx';
 import ReviewsAdmin from './admin/pages/ReviewsAdmin.jsx';
+import HeroAdmin from './admin/pages/HeroAdmin.jsx';
 import AboutAdmin from './admin/pages/AboutAdmin.jsx';
 import ContentAdmin from './admin/pages/ContentAdmin.jsx';
 import ReportsAdmin from './admin/pages/ReportsAdmin.jsx';
@@ -99,11 +100,13 @@ export default function App() {
           <Route path="messages" element={<MessagesAdmin />} />
           <Route path="subscribers" element={<SubscribersAdmin />} />
           <Route path="reviews" element={<ReviewsAdmin />} />
+          <Route path="hero" element={<HeroAdmin />} />
           <Route path="about" element={<AboutAdmin />} />
           <Route path="content" element={<ContentAdmin />} />
           <Route path="reports" element={<ReportsAdmin />} />
           <Route path="settings" element={<SettingsAdmin />} />
-          <Route path="password" element={<PasswordAdmin />} />
+          <Route path="account" element={<PasswordAdmin />} />
+          <Route path="password" element={<Navigate to="/admin/account" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>

@@ -4,20 +4,19 @@ import useFetch from '../../hooks/useFetch.js';
 import { useLang } from '../../context/LanguageContext.jsx';
 import { adminApi } from '../adminApi.js';
 import ActionMenu from '../ActionMenu.jsx';
+import { useFeedback } from '../feedback.jsx';
 import { Badge, ErrorBox, Loading, PageHeader, btnPrimary, card, inputClass } from '../ui.jsx';
 
-function PageEditor({ page, onSaved }) {
+function PageEditor({ page, onSaved, fb }) {
   const { t } = useLang();
   const [p, setP] = useState({ title_en: page.title_en, title_am: page.title_am || '', body_en: page.body_en, body_am: page.body_am || '', is_active: Boolean(page.is_active) });
-  const [msg, setMsg] = useState('');
   const save = async () => {
-    setMsg('');
     try {
       await adminApi(`/content/pages/${page.slug}`, { method: 'PUT', body: JSON.stringify({ ...p, is_active: p.is_active ? 1 : 0 }) });
-      setMsg(t('a_saved'));
+      fb.success(t('a_saved'));
       onSaved();
     } catch (e) {
-      setMsg(e.message);
+      fb.error(e.message);
     }
   };
   return (
@@ -31,37 +30,40 @@ function PageEditor({ page, onSaved }) {
       </div>
       <p className="mt-2 text-xs text-stone-500">{t('a_draftHint')}</p>
       <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={p.is_active} onChange={(e) => setP({ ...p, is_active: e.target.checked })} className="accent-olive" />{t('a_publishedFooter')}</label>
-      {msg && <p className="mt-2 text-sm text-olive" role="status">{msg}</p>}
       <button onClick={save} className={`${btnPrimary} mt-3`}>{t('a_savePage')}</button>
     </details>
   );
 }
 
-function FaqEditor({ faq, onSaved }) {
+function FaqEditor({ faq, onSaved, fb }) {
   const { t } = useLang();
   const blank = { question_en: '', question_am: '', answer_en: '', answer_am: '', sort_order: 0, is_active: 1 };
   const [f, setF] = useState(faq || blank);
-  const [msg, setMsg] = useState('');
   const save = async () => {
-    setMsg('');
     try {
       await adminApi(faq ? `/content/faqs/${faq.id}` : '/content/faqs', { method: faq ? 'PUT' : 'POST', body: JSON.stringify({ ...f, is_active: f.is_active ? 1 : 0 }) });
       if (!faq) setF(blank);
-      setMsg(t('a_saved'));
+      fb.success(t('a_saved'));
       onSaved();
     } catch (e) {
-      setMsg(e.message);
+      fb.error(e.message);
     }
   };
-  const remove = async () => {
-    if (!window.confirm(t('a_confirmDeleteFaq'))) return;
-    try {
-      await adminApi(`/content/faqs/${faq.id}`, { method: 'DELETE' });
-      onSaved();
-    } catch (e) {
-      setMsg(e.message);
-    }
-  };
+  const remove = () =>
+    fb.confirm({
+      text: t('a_confirmDeleteFaq'),
+      confirmLabel: t('a_yesDelete'),
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await adminApi(`/content/faqs/${faq.id}`, { method: 'DELETE' });
+          fb.success(t('a_faqDeleted'));
+          onSaved();
+        } catch (e) {
+          fb.error(e.message);
+        }
+      },
+    });
   return (
     <li className={`${card} space-y-2 p-4`}>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -75,7 +77,6 @@ function FaqEditor({ faq, onSaved }) {
         <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(f.is_active)} onChange={(e) => setF({ ...f, is_active: e.target.checked })} className="accent-olive" />{t('a_visible')}</label>
         <button onClick={save} className={btnPrimary}>{faq ? t('a_save') : <><Plus size={15} /> {t('a_addQuestion')}</>}</button>
         {faq && <ActionMenu items={[{ label: t('a_delete'), icon: Trash2, danger: true, onClick: remove }]} />}
-        {msg && <span className="text-olive" role="status">{msg}</span>}
       </div>
     </li>
   );
@@ -83,19 +84,21 @@ function FaqEditor({ faq, onSaved }) {
 
 export default function ContentAdmin() {
   const { t } = useLang();
+  const fb = useFeedback();
   const pages = useFetch(() => adminApi('/content/pages'), []);
   const faqs = useFetch(() => adminApi('/content/faqs'), []);
   return (
     <>
       <PageHeader title={t('a_content')} subtitle={t('a_contentSub')} />
+      {fb.banner}
       <h2 className="mb-3 font-semibold">{t('a_policyPages')}</h2>
       {pages.loading ? <Loading /> : pages.error ? <ErrorBox message={pages.error} onRetry={pages.retry} /> : (
-        <div className="space-y-3">{pages.data.map((p) => <PageEditor key={`${p.slug}-${p.updated_at}`} page={p} onSaved={pages.retry} />)}</div>
+        <div className="space-y-3">{pages.data.map((p) => <PageEditor key={`${p.slug}-${p.updated_at}`} page={p} onSaved={pages.retry} fb={fb} />)}</div>
       )}
       <h2 className="mb-3 mt-8 font-semibold">{t('a_faqTitle')}</h2>
       <ul className="space-y-3">
-        {faqs.data && faqs.data.map((f) => <FaqEditor key={f.id} faq={f} onSaved={faqs.retry} />)}
-        <FaqEditor faq={null} onSaved={faqs.retry} />
+        {faqs.data && faqs.data.map((f) => <FaqEditor key={f.id} faq={f} onSaved={faqs.retry} fb={fb} />)}
+        <FaqEditor faq={null} onSaved={faqs.retry} fb={fb} />
       </ul>
     </>
   );

@@ -5,7 +5,8 @@ import { useLang } from '../../context/LanguageContext.jsx';
 import { onImgError } from '../../lib/api.js';
 import { adminApi } from '../adminApi.js';
 import ActionMenu from '../ActionMenu.jsx';
-import { Badge, ErrorBox, Loading, Notice, PageHeader, btnGhost, btnPrimary, card, inputClass } from '../ui.jsx';
+import { useFeedback } from '../feedback.jsx';
+import { Badge, ErrorBox, Loading, PageHeader, btnGhost, btnPrimary, card, inputClass } from '../ui.jsx';
 
 function Field({ label, hint, children }) {
   return (
@@ -96,26 +97,28 @@ function SectionForm({ initial, onSaved, onCancel }) {
 
 export default function AboutAdmin() {
   const { t } = useLang();
+  const fb = useFeedback();
   const { data, loading, error, retry } = useFetch(() => adminApi('/about'), []);
   const [editing, setEditing] = useState(null);
-  const [msg, setMsg] = useState('');
 
-  const run = async (fn, okMessage) => {
-    setMsg('');
+  const run = async (fn, okText) => {
     try {
       await fn();
-      if (okMessage) setMsg(okMessage);
+      if (okText) fb.success(okText);
       retry();
     } catch (err) {
-      setMsg(err.message);
+      fb.error(err.message);
     }
   };
   const move = (s, direction) => run(() => adminApi(`/about/${s.id}/move`, { method: 'PATCH', body: JSON.stringify({ direction }) }));
-  const toggle = (s) => run(() => adminApi(`/about/${s.id}/active`, { method: 'PATCH', body: JSON.stringify({ is_active: s.is_active ? 0 : 1 }) }));
-  const remove = (s) => {
-    if (!window.confirm(t('a_confirmDeleteSection', { name: s.title_en }))) return;
-    run(() => adminApi(`/about/${s.id}`, { method: 'DELETE' }), t('a_sectionDeleted', { name: s.title_en }));
-  };
+  const toggle = (s) => run(() => adminApi(`/about/${s.id}/active`, { method: 'PATCH', body: JSON.stringify({ is_active: s.is_active ? 0 : 1 }) }), t('a_updated'));
+  const remove = (s) =>
+    fb.confirm({
+      text: t('a_confirmDeleteSection', { name: s.title_en }),
+      confirmLabel: t('a_yesDelete'),
+      danger: true,
+      onConfirm: () => run(() => adminApi(`/about/${s.id}`, { method: 'DELETE' }), t('a_sectionDeleted', { name: s.title_en })),
+    });
   const list = data || [];
 
   return (
@@ -124,9 +127,9 @@ export default function AboutAdmin() {
         <a href="/about" target="_blank" rel="noreferrer" className={btnGhost}>{t('a_viewPage')}</a>
         {!editing && <button onClick={() => setEditing('new')} className={btnPrimary}><Plus size={16} /> {t('a_addSection')}</button>}
       </PageHeader>
+      {fb.banner}
 
-      {editing && <SectionForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? null : editing} onSaved={() => { setEditing(null); setMsg(t('a_saved')); retry(); }} onCancel={() => setEditing(null)} />}
-      {msg && <Notice>{msg}</Notice>}
+      {editing && <SectionForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? null : editing} onSaved={() => { setEditing(null); fb.success(t('a_saved')); retry(); }} onCancel={() => setEditing(null)} />}
 
       {loading ? <Loading /> : error ? <ErrorBox message={error} onRetry={retry} /> : list.length === 0 ? (
         <p className="py-10 text-center text-sm text-stone-500">{t('a_noSections')}</p>
