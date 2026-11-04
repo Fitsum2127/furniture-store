@@ -21,6 +21,8 @@ export const DEFAULTS = {
   payment_cod_enabled: '1',
   payment_chapa_enabled: '0',
   payment_telebirr_enabled: '0',
+  logo_url: '',
+  favicon_url: '',
 };
 
 let cache = { at: 0, data: null };

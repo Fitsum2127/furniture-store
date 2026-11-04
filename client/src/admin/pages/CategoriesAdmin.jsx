@@ -5,7 +5,8 @@ import { useLang } from '../../context/LanguageContext.jsx';
 import { onImgError } from '../../lib/api.js';
 import { adminApi } from '../adminApi.js';
 import ActionMenu from '../ActionMenu.jsx';
-import { Badge, ErrorBox, Loading, Notice, PageHeader, btnGhost, btnPrimary, card, inputClass } from '../ui.jsx';
+import { useFeedback } from '../feedback.jsx';
+import { Badge, ErrorBox, Loading, PageHeader, btnGhost, btnPrimary, card, inputClass } from '../ui.jsx';
 
 function CategoryForm({ initial, onSaved, onCancel }) {
   const { t } = useLang();
@@ -62,28 +63,33 @@ function CategoryForm({ initial, onSaved, onCancel }) {
 
 export default function CategoriesAdmin() {
   const { t } = useLang();
+  const fb = useFeedback();
   const { data, loading, error, retry } = useFetch(() => adminApi('/categories'), []);
   const [editing, setEditing] = useState(null);
-  const [msg, setMsg] = useState('');
 
-  const remove = async (c) => {
-    if (!window.confirm(t('a_confirmDeleteCategory', { name: c.name_en }))) return;
-    setMsg('');
-    try {
-      await adminApi(`/categories/${c.id}`, { method: 'DELETE' });
-      retry();
-    } catch (err) {
-      setMsg(err.message);
-    }
-  };
+  const remove = (c) =>
+    fb.confirm({
+      text: t('a_confirmDeleteCategory', { name: c.name_en }),
+      confirmLabel: t('a_yesDelete'),
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await adminApi(`/categories/${c.id}`, { method: 'DELETE' });
+          fb.success(t('a_categoryDeleted', { name: c.name_en }));
+          retry();
+        } catch (err) {
+          fb.error(err.message);
+        }
+      },
+    });
 
   return (
     <>
       <PageHeader title={t('a_categories')} subtitle={t('a_categoriesSub')}>
         {!editing && <button onClick={() => setEditing('new')} className={btnPrimary}><Plus size={16} /> {t('a_addCategory')}</button>}
       </PageHeader>
-      {editing && <CategoryForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? null : editing} onSaved={() => { setEditing(null); retry(); }} onCancel={() => setEditing(null)} />}
-      {msg && <Notice>{msg}</Notice>}
+      {fb.banner}
+      {editing && <CategoryForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? null : editing} onSaved={() => { setEditing(null); fb.success(t('a_saved')); retry(); }} onCancel={() => setEditing(null)} />}
       {loading ? <Loading /> : error ? <ErrorBox message={error} onRetry={retry} /> : (
         <ul className="space-y-3">
           {data.map((c) => (

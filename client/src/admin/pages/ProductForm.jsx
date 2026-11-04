@@ -6,6 +6,7 @@ import { useLang } from '../../context/LanguageContext.jsx';
 import { onImgError } from '../../lib/api.js';
 import { adminApi } from '../adminApi.js';
 import ActionMenu from '../ActionMenu.jsx';
+import { useFeedback } from '../feedback.jsx';
 import { ErrorBox, Loading, PageHeader, btnGhost, btnPrimary, card, inputClass } from '../ui.jsx';
 
 const EMPTY = { sku: '', category_id: '', name_en: '', name_am: '', tagline_en: '', tagline_am: '', description_en: '', description_am: '', price: '', old_price: '', stock: '0', is_active: true, is_featured: false };
@@ -30,16 +31,17 @@ function Field({ label, hint, children }) {
   );
 }
 
-function VariantRow({ variant, onChanged, onError }) {
+function VariantRow({ variant, onChanged, fb }) {
   const { t } = useLang();
   const [v, setV] = useState({ name_en: variant.name_en, name_am: variant.name_am, hex_color: variant.hex_color, stock: String(variant.stock), is_active: Boolean(variant.is_active) });
   const body = () => JSON.stringify({ ...v, is_active: v.is_active ? 1 : 0 });
-  const run = async (fn) => {
+  const run = async (fn, okText) => {
     try {
       await fn();
+      fb.success(okText);
       onChanged();
     } catch (e) {
-      onError(e.message);
+      fb.error(e.message);
     }
   };
   return (
@@ -50,9 +52,12 @@ function VariantRow({ variant, onChanged, onError }) {
       <input type="number" min="0" value={v.stock} onChange={(e) => setV({ ...v, stock: e.target.value })} aria-label={t('a_stock')} className={inputClass} />
       <div className="flex items-center gap-2">
         <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={v.is_active} onChange={(e) => setV({ ...v, is_active: e.target.checked })} className="accent-olive" />{t('a_active')}</label>
-        <button type="button" onClick={() => run(() => adminApi(`/variants/${variant.id}`, { method: 'PUT', body: body() }))} className={btnGhost}>{t('a_save')}</button>
+        <button type="button" onClick={() => run(() => adminApi(`/variants/${variant.id}`, { method: 'PUT', body: body() }), t('a_saved'))} className={btnGhost}>{t('a_save')}</button>
         <ActionMenu
-          items={[{ label: t('a_delete'), icon: Trash2, danger: true, onClick: () => window.confirm(t('a_confirmDeleteVariant')) && run(() => adminApi(`/variants/${variant.id}`, { method: 'DELETE' })) }]}
+          items={[{
+            label: t('a_delete'), icon: Trash2, danger: true,
+            onClick: () => fb.confirm({ text: t('a_confirmDeleteVariant'), confirmLabel: t('a_yesDelete'), danger: true, onConfirm: () => run(() => adminApi(`/variants/${variant.id}`, { method: 'DELETE' }), t('a_variantDeleted')) }),
+          }]}
         />
       </div>
     </li>
@@ -64,6 +69,7 @@ export default function ProductForm() {
   const editing = Boolean(id);
   const navigate = useNavigate();
   const { t } = useLang();
+  const fb = useFeedback();
   const cats = useFetch(() => adminApi('/categories'), []);
 
   const [f, setF] = useState(EMPTY);
@@ -141,6 +147,7 @@ export default function ProductForm() {
       await upload(productId);
       if (editing) {
         await load();
+        fb.success(t('a_saved'));
         setSaving(false);
       } else {
         navigate(`/admin/products/${productId}`, { replace: true });
@@ -151,13 +158,13 @@ export default function ProductForm() {
     }
   };
 
-  const act = async (fn) => {
-    setError('');
+  const act = async (fn, okText) => {
     try {
       await fn();
       await load();
+      if (okText) fb.success(okText);
     } catch (err) {
-      setError(err.message);
+      fb.error(err.message);
     }
   };
 
@@ -170,6 +177,7 @@ export default function ProductForm() {
       <PageHeader title={editing ? t('a_editProductTitle') : t('a_addProductTitle')}>
         <Link to="/admin/products" className={btnGhost}><ArrowLeft size={16} /> {t('a_back')}</Link>
       </PageHeader>
+      {fb.banner}
 
       <form onSubmit={save} className="max-w-4xl space-y-6">
         <section className={`${sec} grid gap-4 sm:grid-cols-2`}>
@@ -214,14 +222,14 @@ export default function ProductForm() {
             <h2 className="font-semibold">{t('a_variantsTitle')}</h2>
             <p className="mt-1 text-xs text-stone-500">{t('a_variantsHint')}</p>
             <ul className="mt-3 space-y-2">
-              {variants.map((v) => <VariantRow key={`${v.id}-${v.stock}-${v.is_active}`} variant={v} onChanged={load} onError={setError} />)}
+              {variants.map((v) => <VariantRow key={`${v.id}-${v.stock}-${v.is_active}`} variant={v} onChanged={load} fb={fb} />)}
             </ul>
             <div className="mt-4 grid items-end gap-2 sm:grid-cols-[1fr_1fr_64px_90px_auto]">
               <input value={newVariant.name_en} onChange={(e) => setNewVariant({ ...newVariant, name_en: e.target.value })} placeholder={t('a_newOptionEn')} aria-label={t('a_newOptionEn')} className={inputClass} />
               <input value={newVariant.name_am} onChange={(e) => setNewVariant({ ...newVariant, name_am: e.target.value })} placeholder={t('a_newOptionAm')} aria-label={t('a_newOptionAm')} className={inputClass} />
               <input type="color" value={newVariant.hex_color} onChange={(e) => setNewVariant({ ...newVariant, hex_color: e.target.value })} aria-label={t('a_color')} className="h-11 w-full rounded-xl border border-sand-300 dark:border-stone-700" />
               <input type="number" min="0" value={newVariant.stock} onChange={(e) => setNewVariant({ ...newVariant, stock: e.target.value })} aria-label={t('a_stock')} className={inputClass} />
-              <button type="button" className={btnPrimary} onClick={() => act(async () => { await adminApi(`/products/${id}/variants`, { method: 'POST', body: JSON.stringify(newVariant) }); setNewVariant({ name_en: '', name_am: '', hex_color: '#d2b48c', stock: '0' }); })}>{t('a_addOption')}</button>
+              <button type="button" className={btnPrimary} onClick={() => act(async () => { await adminApi(`/products/${id}/variants`, { method: 'POST', body: JSON.stringify(newVariant) }); setNewVariant({ name_en: '', name_am: '', hex_color: '#d2b48c', stock: '0' }); }, t('a_saved'))}>{t('a_addOption')}</button>
             </div>
           </section>
         )}
@@ -239,8 +247,11 @@ export default function ProductForm() {
                     {i === 0 ? <span className="text-xs font-semibold text-olive">{t('a_main')}</span> : <span />}
                     <ActionMenu
                       items={[
-                        i > 0 && { label: t('a_makeMain'), icon: Star, onClick: () => act(() => adminApi(`/products/${id}/images/${img.id}/primary`, { method: 'PATCH' })) },
-                        { label: t('a_delete'), icon: Trash2, danger: true, onClick: () => window.confirm(t('a_confirmDeletePhoto')) && act(() => adminApi(`/products/${id}/images/${img.id}`, { method: 'DELETE' })) },
+                        i > 0 && { label: t('a_makeMain'), icon: Star, onClick: () => act(() => adminApi(`/products/${id}/images/${img.id}/primary`, { method: 'PATCH' }), t('a_saved')) },
+                        {
+                          label: t('a_delete'), icon: Trash2, danger: true,
+                          onClick: () => fb.confirm({ text: t('a_confirmDeletePhoto'), confirmLabel: t('a_yesDelete'), danger: true, onConfirm: () => act(() => adminApi(`/products/${id}/images/${img.id}`, { method: 'DELETE' }), t('a_photoDeleted')) }),
+                        },
                       ]}
                     />
                   </div>

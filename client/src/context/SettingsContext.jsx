@@ -1,11 +1,12 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo } from 'react';
 import useFetch from '../hooks/useFetch.js';
-import { api } from '../lib/api.js';
+import { api, assetUrl } from '../lib/api.js';
 
 const DEFAULTS = {
   business_name: 'Bete Furniture', phone: '', whatsapp: '', email: '', telegram: '', facebook: '', instagram: '', tiktok: '',
   address_en: '', address_am: '', hours_en: '', hours_am: '', currency: 'ETB', delivery_fee: '0',
   free_delivery_cities: '', free_delivery_min_subtotal: '', payment_cod_enabled: '1', payment_chapa_enabled: '0', payment_telebirr_enabled: '0',
+  logo_url: '', favicon_url: '',
 };
 
 export const splitList = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
@@ -19,11 +20,27 @@ export function calcDeliveryFee(settings, { city, subtotal }) {
   return Number.isFinite(fee) && fee > 0 ? fee : 0;
 }
 
-const SettingsContext = createContext({ settings: DEFAULTS, loaded: false });
+const SettingsContext = createContext({ settings: DEFAULTS, loaded: false, reload: () => {} });
 
 export function SettingsProvider({ children }) {
-  const { data } = useFetch(() => api('/settings'), []);
-  const value = useMemo(() => ({ settings: { ...DEFAULTS, ...(data || {}) }, loaded: Boolean(data) }), [data]);
+  const { data, retry } = useFetch(() => api('/settings'), []);
+
+  // The icon in the browser tab comes from the settings (the admin can change it).
+  useEffect(() => {
+    if (!data) return;
+    const href = assetUrl(data.favicon_url || data.logo_url);
+    if (!href) return;
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.removeAttribute('type');
+    link.href = href;
+  }, [data]);
+
+  const value = useMemo(() => ({ settings: { ...DEFAULTS, ...(data || {}) }, loaded: Boolean(data), reload: retry }), [data, retry]);
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
 

@@ -145,22 +145,6 @@ export default function Dashboard() {
         <Link to="/admin/reports" className={btnPrimary}>{t('a_viewReports')} <ArrowRight size={15} /></Link>
       </PageHeader>
 
-      {pending.length > 0 && (
-        <section className="mb-6 rounded-2xl border border-olive/40 bg-olive/5 p-5">
-          <h2 className="font-semibold">{t('a_setupChecklist')}</h2>
-          <p className="text-sm text-stone-600 dark:text-stone-400">{t('a_setupSub')}</p>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            {d.checklist.map((c) => (
-              <li key={c.key}>
-                <Link to={c.to} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white dark:hover:bg-stone-800 ${c.done ? 'text-stone-400 line-through' : 'font-medium'}`}>
-                  {c.done ? <CheckCircle2 size={17} className="text-olive" /> : <Circle size={17} />} {t(`a_ck_${c.key}`)}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi dark icon={Wallet} title={t('a_kpiRevenue')} value={money(k.revenue.value)} change={k.revenue.change} series={d.series.revenue} />
         <Kpi icon={ShoppingCart} title={t('a_kpiOrders')} value={k.orders.value} change={k.orders.change} series={d.series.orders} />
@@ -205,6 +189,22 @@ export default function Dashboard() {
           )}
         </section>
       </div>
+
+      {pending.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-olive/40 bg-olive/5 p-5">
+          <h2 className="font-semibold">{t('a_setupChecklist')}</h2>
+          <p className="text-sm text-stone-600 dark:text-stone-400">{t('a_setupSub')}</p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {d.checklist.map((c) => (
+              <li key={c.key}>
+                <Link to={c.to} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-white dark:hover:bg-stone-800 ${c.done ? 'text-stone-400 line-through' : 'font-medium'}`}>
+                  {c.done ? <CheckCircle2 size={17} className="text-olive" /> : <Circle size={17} />} {t(`a_ck_${c.key}`)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className={`${card} p-5`}>

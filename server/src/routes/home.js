@@ -16,4 +16,13 @@ router.get('/testimonials', async (_req, res) => {
   res.json(rows.map((r) => ({ ...r, is_verified_purchase: Boolean(r.is_verified_purchase) })));
 });
 
+// The slides of the home page hero. The admin edits them under Admin > Hero section.
+router.get('/hero', async (_req, res) => {
+  const [rows] = await pool.query(
+    `SELECT id, title_en, title_am, text_en, text_am, button_en, button_am, link_url, image_url
+       FROM hero_slides WHERE is_active = 1 ORDER BY sort_order, id`
+  );
+  res.json(rows);
+});
+
 export default router;

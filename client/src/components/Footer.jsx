@@ -3,7 +3,7 @@ import { Phone, Mail, MessageCircle } from 'lucide-react';
 import { useLang } from '../context/LanguageContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import useFetch from '../hooks/useFetch.js';
-import { api } from '../lib/api.js';
+import { api, assetUrl } from '../lib/api.js';
 
 export default function Footer() {
   const { t, tr } = useLang();
@@ -12,11 +12,13 @@ export default function Footer() {
   const social = [['Telegram', s.telegram], ['Facebook', s.facebook], ['Instagram', s.instagram], ['TikTok', s.tiktok]].filter(([, url]) => url);
   const wa = String(s.whatsapp || '').replace(/\D/g, '');
   const [first, ...rest] = String(s.business_name).split(' ');
+  const logo = assetUrl(s.logo_url);
 
   return (
     <footer className="border-t border-sand-200 bg-sand-100 pb-24 pt-12 dark:border-stone-800 dark:bg-stone-900 md:pb-10">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 md:grid-cols-4 lg:px-8">
         <div>
+          {logo && <img src={logo} alt="" className="mb-3 h-12 w-auto max-w-[10rem] object-contain" />}
           <p className="font-display text-xl font-semibold">
             {first} {rest.length > 0 && <span className="text-olive">{rest.join(' ')}</span>}
           </p>

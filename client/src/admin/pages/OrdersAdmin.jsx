@@ -5,24 +5,24 @@ import useFetch from '../../hooks/useFetch.js';
 import { useLang } from '../../context/LanguageContext.jsx';
 import { onImgError } from '../../lib/api.js';
 import { adminApi } from '../adminApi.js';
+import { useFeedback } from '../feedback.jsx';
 import { Badge, ErrorBox, Loading, PageHeader, card, inputClass, payColor, statusColor, useFmt, useLabels } from '../ui.jsx';
 
 const STATUSES = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 const PAYMENTS = ['pending', 'paid', 'failed'];
 
-function OrderRow({ order, onChanged, autoOpen }) {
+function OrderRow({ order, onChanged, autoOpen, fb }) {
   const { t } = useLang();
   const { money, fmtDate } = useFmt();
   const { st, pay, method } = useLabels();
   const [open, setOpen] = useState(autoOpen);
   const [detail, setDetail] = useState(null);
-  const [err, setErr] = useState('');
 
   const loadDetail = async () => {
     try {
       setDetail(await adminApi(`/orders/${order.id}`));
     } catch (e) {
-      setErr(e.message);
+      fb.error(e.message);
     }
   };
   useEffect(() => {
@@ -30,16 +30,25 @@ function OrderRow({ order, onChanged, autoOpen }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const update = async (patch) => {
-    setErr('');
-    if (patch.payment_status === 'paid' && !window.confirm(t('a_confirmPaid'))) return;
-    if (patch.status === 'cancelled' && !window.confirm(t('a_confirmCancel'))) return;
+  const doUpdate = async (patch) => {
     try {
       await adminApi(`/orders/${order.id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+      fb.success(t('a_orderUpdated'));
       onChanged();
       await loadDetail();
     } catch (e) {
-      setErr(e.message);
+      fb.error(e.message);
+    }
+  };
+
+  // Risky changes ask for confirmation on the page, not in a popup.
+  const update = (patch) => {
+    if (patch.payment_status === 'paid') {
+      fb.confirm({ text: t('a_confirmPaid'), confirmLabel: t('a_markPaidYes'), onConfirm: () => doUpdate(patch) });
+    } else if (patch.status === 'cancelled') {
+      fb.confirm({ text: t('a_confirmCancel'), confirmLabel: t('a_cancelOrderYes'), danger: true, onConfirm: () => doUpdate(patch) });
+    } else {
+      doUpdate(patch);
     }
   };
 
@@ -58,7 +67,6 @@ function OrderRow({ order, onChanged, autoOpen }) {
 
       {open && (
         <div className="space-y-4 border-t border-sand-200 p-4 dark:border-stone-800">
-          {err && <p className="text-sm text-red-500" role="alert">{err}</p>}
           {!detail ? <Loading /> : (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -112,6 +120,7 @@ function OrderRow({ order, onChanged, autoOpen }) {
 export default function OrdersAdmin() {
   const { t } = useLang();
   const { st } = useLabels();
+  const fb = useFeedback();
   const [params] = useSearchParams();
   const [status, setStatus] = useState('');
   const [q, setQ] = useState(params.get('q') || '');
@@ -129,10 +138,11 @@ export default function OrdersAdmin() {
           {STATUSES.map((s) => <option key={s} value={s}>{st(s)}</option>)}
         </select>
       </PageHeader>
+      {fb.banner}
       {loading ? <Loading /> : error ? <ErrorBox message={error} onRetry={retry} /> : data.length === 0 ? (
         <p className="py-10 text-center text-sm text-stone-500">{t('a_noOrders')}</p>
       ) : (
-        <ul className="space-y-3">{data.map((o) => <OrderRow key={o.id} order={o} onChanged={retry} autoOpen={data.length === 1 && Boolean(q.trim())} />)}</ul>
+        <ul className="space-y-3">{data.map((o) => <OrderRow key={o.id} order={o} onChanged={retry} autoOpen={data.length === 1 && Boolean(q.trim())} fb={fb} />)}</ul>
       )}
     </>
   );

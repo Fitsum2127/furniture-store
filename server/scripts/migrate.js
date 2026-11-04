@@ -12,6 +12,22 @@ function randomOrderNumber() {
   return `BF-${s}`;
 }
 
+const ph = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1800&q=80`;
+
+// The 10 slides the home page showed before the admin could edit them.
+const HERO_SEED = [
+  ['Elevate Your Lifestyle', 'ኑሮዎን ያሳምሩ', 'Discover furniture and home decor that blends style, comfort and elegance.', 'ዘይቤን፣ ምቾትንና ውበትን ያጣመሩ የቤት ዕቃዎችና ማስዋቢያዎችን ያግኙ።', 'Explore Collection', 'ስብስቡን ይመልከቱ', '/shop', ph('photo-1616486338812-3dadae4b4ace')],
+  ['Rest in Calm Comfort', 'በተረጋጋ ምቾት ዕረፍት ያድርጉ', 'Beds and soft textures for restful nights.', 'ለእረፍት ምሽቶች አልጋዎችና ለስላሳ ጨርቆች።', 'Shop Bedroom', 'መኝታ ቤት ይግዙ', '/shop?category=bedroom', ph('photo-1505693416388-ac5ce068fe85')],
+  ['Gather Around the Table', 'በጠረጴዛ ዙሪያ ይሰባሰቡ', 'Dining sets for family meals and long conversations.', 'ለቤተሰብ ምግብና ለረጅም ጭውውት የመመገቢያ ስብስቦች።', 'Shop Dining', 'የመመገቢያ ክፍል ይግዙ', '/shop?category=dining', ph('photo-1556228453-efd6c1ff04f6')],
+  ['Light Up Every Corner', 'ጥግ ሁሉ ይብራ', 'Pendants and lamps that fill your home with a soft glow.', 'ቤትዎን በለስላሳ ብርሃን የሚሞሉ መብራቶች።', 'Shop Lighting', 'መብራቶችን ይግዙ', '/shop?category=lighting', ph('photo-1513694203232-719a280e022f')],
+  ['Details That Tell Your Story', 'ታሪክዎን የሚናገሩ ዝርዝሮች', 'Wall art, mirrors and vases that bring personality to every room.', 'ለእያንዳንዱ ክፍል ባህሪ የሚሰጡ የግድግዳ ጥበብ፣ መስተዋቶችና የአበባ ማስቀመጫዎች።', 'Shop Wall Decor', 'ማስዋቢያ ይግዙ', '/shop?category=wall-decor', ph('photo-1618220179428-22790b461013')],
+  ['Modern Living, Made Warm', 'ዘመናዊ ኑሮ፣ ሞቅ ያለ ገጽታ', 'Sofas and chairs with clean lines and everyday comfort.', 'ንጹህ መስመሮችና የዕለት ምቾት ያላቸው ሶፋዎችና ወንበሮች።', 'Shop Living Room', 'ሳሎን ይግዙ', '/shop?category=living-room', ph('photo-1600210492486-724fe5c67fb0')],
+  ['Work in Style', 'በውበት ይሥሩ', 'Desks and office pieces for a calm, organized workspace.', 'የተረጋጋና የተደራጀ የሥራ ቦታ የሚፈጥሩ ጠረጴዛዎችና የቢሮ ዕቃዎች።', 'Shop Office', 'የቢሮ ዕቃ ይግዙ', '/shop?category=office', ph('photo-1518455027359-f3f8164ba6bd')],
+  ['Natural Textures, Timeless Look', 'ተፈጥሯዊ ሸካራነት፣ ጊዜ የማይሽረው ገጽታ', 'Wood, linen and ceramic in earthy tones.', 'በምድራዊ ቀለም የተሠሩ እንጨት፣ ሊነንና ሴራሚክ።', 'Browse All', 'ሁሉንም ይመልከቱ', '/shop', ph('photo-1586023492125-27b2c045efd7')],
+  ['Make Every Room Yours', 'እያንዳንዱን ክፍል የእርስዎ ያድርጉ', 'Cushions, plants and small touches that turn a house into a home.', 'ቤትን መኖሪያ የሚያደርጉ ትራሶች፣ ተክሎችና ትናንሽ ጌጦች።', 'Shop Home Decor', 'የቤት ማስዋቢያ ይግዙ', '/shop?category=home-decor', ph('photo-1600607687939-ce8a6c25118c')],
+  ['Furniture for Every Room', 'ለእያንዳንዱ ክፍል የቤት ዕቃ', 'Browse the full collection and find the pieces that fit your home.', 'ሙሉውን ስብስብ ይመልከቱ፣ ለቤትዎ የሚስማሙትን ያግኙ።', 'Start Shopping', 'ግዢ ይጀምሩ', '/shop', ph('photo-1493663284031-b7e3aefcae8e')],
+].map((row, i) => [...row, i]);
+
 const db = {
   async exists(sql, params) {
     const [rows] = await pool.query(sql, params);
@@ -81,7 +97,6 @@ const migrations = [
       await db.addColumn('product_variants', 'is_active', 'TINYINT(1) NOT NULL DEFAULT 1');
       await pool.query('UPDATE product_variants SET stock = 0 WHERE stock < 0');
       await pool.query('UPDATE products SET stock = 0 WHERE stock < 0');
-      // Products with variants: stock is the sum of their variants.
       await pool.query(`UPDATE products p
         SET p.stock = (SELECT COALESCE(SUM(v.stock), 0) FROM product_variants v WHERE v.product_id = p.id AND v.is_active = 1)
         WHERE EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id AND v.is_active = 1)`);
@@ -124,7 +139,6 @@ const migrations = [
       await db.addColumn('orders', 'payment_reference', 'VARCHAR(120) NULL');
       await db.addIndex('orders', 'uq_orders_number', 'order_number', true);
 
-      // Give every existing order a random, unguessable order number.
       const [rows] = await pool.query('SELECT id FROM orders WHERE order_number IS NULL');
       for (const row of rows) {
         for (let tries = 0; tries < 10; tries += 1) {
@@ -224,7 +238,6 @@ const migrations = [
         sort_order INT NOT NULL DEFAULT 0,
         is_active TINYINT(1) NOT NULL DEFAULT 1
       )`);
-      // Hidden placeholders. The business must write the real policies before they are switched on.
       const draftEn = 'DRAFT. The business has not written this policy yet.';
       const draftAm = 'ረቂቅ። የንግዱ ባለቤት ይህን ፖሊሲ ገና አልጻፈም።';
       const pages = [
@@ -234,10 +247,57 @@ const migrations = [
         ['privacy-policy', 'Privacy Policy', 'የግላዊነት ፖሊሲ'],
         ['terms', 'Terms and Conditions', 'ውሎችና ሁኔታዎች'],
       ].map(([slug, en, am]) => [slug, en, am, draftEn, draftAm, 0]);
-      await pool.query(
-        'INSERT IGNORE INTO pages (slug, title_en, title_am, body_en, body_am, is_active) VALUES ?',
-        [pages]
-      );
+      await pool.query('INSERT IGNORE INTO pages (slug, title_en, title_am, body_en, body_am, is_active) VALUES ?', [pages]);
+    },
+  },
+  {
+    name: '011_hero_slides',
+    async up() {
+      await pool.query(`CREATE TABLE IF NOT EXISTS hero_slides (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title_en VARCHAR(200) NOT NULL,
+        title_am VARCHAR(200) NULL,
+        text_en VARCHAR(500) NULL,
+        text_am VARCHAR(500) NULL,
+        button_en VARCHAR(80) NULL,
+        button_am VARCHAR(80) NULL,
+        link_url VARCHAR(300) NOT NULL DEFAULT '/shop',
+        image_url VARCHAR(500) NOT NULL,
+        sort_order INT NOT NULL DEFAULT 0,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_hero_order (sort_order)
+      )`);
+      const [[row]] = await pool.query('SELECT COUNT(*) AS n FROM hero_slides');
+      if (Number(row.n) === 0) {
+        await pool.query(
+          'INSERT INTO hero_slides (title_en, title_am, text_en, text_am, button_en, button_am, link_url, image_url, sort_order) VALUES ?',
+          [HERO_SEED]
+        );
+      }
+    },
+  },
+  {
+    name: '012_admin_usernames',
+    async up() {
+      await db.addColumn('admins', 'username', 'VARCHAR(40) NULL');
+      const [rows] = await pool.query('SELECT id, email FROM admins WHERE username IS NULL ORDER BY id');
+      const taken = (await pool.query('SELECT username FROM admins WHERE username IS NOT NULL'))[0];
+      const used = new Set(taken.map((r) => r.username));
+      for (const r of rows) {
+        let base = String(r.email || '').split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 30);
+        if (base.length < 3) base = `${base}admin`.slice(0, 30);
+        let name = base;
+        let n = 1;
+        while (used.has(name)) {
+          n += 1;
+          name = `${base}${n}`;
+        }
+        used.add(name);
+        await pool.query('UPDATE admins SET username = ? WHERE id = ?', [name, r.id]);
+      }
+      await pool.query('ALTER TABLE admins MODIFY username VARCHAR(40) NOT NULL');
+      await db.addIndex('admins', 'uq_admins_username', 'username', true);
     },
   },
 ];

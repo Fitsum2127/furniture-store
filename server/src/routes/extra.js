@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
 import { requireAdmin } from '../middleware/auth.js';
-import { HttpError, toInt } from '../middleware/validate.js';
+import { HttpError, cleanText, escapeLike, toInt } from '../middleware/validate.js';
 import { getSettings } from '../services/settings.js';
 
 // Public: list of published policy pages (used by the footer)
@@ -26,6 +26,30 @@ adminExtraRouter.post('/customers/:id/password', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Search box of the admin panel: finds products, orders, customers and messages.
+adminExtraRouter.get('/search', async (req, res) => {
+  const q = cleanText(req.query.q).slice(0, 60);
+  if (q.length < 2) return res.json({ products: [], orders: [], customers: [], messages: [] });
+  const like = `%${escapeLike(q)}%`;
+  const [products] = await pool.query(
+    'SELECT id, name_en, name_am, sku FROM products WHERE name_en LIKE ? OR name_am LIKE ? OR sku LIKE ? ORDER BY id DESC LIMIT 5',
+    [like, like, like]
+  );
+  const [orders] = await pool.query(
+    'SELECT id, order_number, customer_name FROM orders WHERE order_number LIKE ? OR customer_name LIKE ? OR phone LIKE ? ORDER BY id DESC LIMIT 5',
+    [like, like, like]
+  );
+  const [customers] = await pool.query(
+    'SELECT id, name, phone, email FROM customers WHERE name LIKE ? OR phone LIKE ? OR email LIKE ? ORDER BY id DESC LIMIT 5',
+    [like, like, like]
+  );
+  const [messages] = await pool.query(
+    'SELECT id, name, LEFT(body, 80) AS snippet FROM messages WHERE name LIKE ? OR body LIKE ? ORDER BY id DESC LIMIT 5',
+    [like, like]
+  );
+  return res.json({ products, orders, customers, messages });
+});
+
 const one = async (sql) => (await pool.query(sql))[0][0];
 const pct = (cur, prev) => (prev > 0 ? Math.round(((cur - prev) / prev) * 1000) / 10 : null);
 const WIN = 'created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)';
@@ -44,7 +68,6 @@ adminExtraRouter.get('/dashboard', async (_req, res) => {
   const curAvg = cur.orders > 0 ? curRevenue / cur.orders : 0;
   const prevAvg = prev.orders > 0 ? prevRevenue / prev.orders : 0;
 
-  // 30 daily points, oldest first
   const today = (await one("SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS d")).d;
   const labels = [];
   for (let i = 29; i >= 0; i -= 1) {
@@ -68,7 +91,6 @@ adminExtraRouter.get('/dashboard', async (_req, res) => {
       GROUP BY c.id, c.name_en, c.name_am ORDER BY revenue DESC`
   );
 
-  // GROUP BY uses the real columns (not the aliases), which MySQL's strict mode requires.
   const [topProducts] = await pool.query(
     `SELECT oi.product_id,
             COALESCE(oi.product_name_en, p.name_en) AS name_en,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import PageTransition from '../components/PageTransition.jsx';
+import PasswordField from '../components/PasswordField.jsx';
 import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
 import { useLang } from '../context/LanguageContext.jsx';
 import useFetch from '../hooks/useFetch.js';
@@ -98,8 +99,8 @@ export default function Account() {
         <form onSubmit={changePw} className={`${card} space-y-4`}>
           <h2 className="text-xl font-semibold">{t('changePassword')}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <input type="password" value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} placeholder={t('currentPassword')} aria-label={t('currentPassword')} autoComplete="current-password" className={field} />
-            <input type="password" value={pw.newPassword} onChange={(e) => setPw({ ...pw, newPassword: e.target.value })} placeholder={t('newPassword')} aria-label={t('newPassword')} autoComplete="new-password" className={field} />
+            <PasswordField value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} placeholder={t('currentPassword')} aria-label={t('currentPassword')} autoComplete="current-password" className={field} />
+            <PasswordField value={pw.newPassword} onChange={(e) => setPw({ ...pw, newPassword: e.target.value })} placeholder={t('newPassword')} aria-label={t('newPassword')} autoComplete="new-password" className={field} />
           </div>
           {pwMsg && <p className="text-sm text-olive" role="status">{pwMsg}</p>}
           <button type="submit" className="rounded-full border border-olive px-8 py-3 text-sm font-semibold text-olive hover:bg-olive hover:text-white">{t('save')}</button>

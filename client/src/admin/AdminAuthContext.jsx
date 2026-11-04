@@ -22,8 +22,8 @@ export function AdminAuthProvider({ children }) {
     return () => window.removeEventListener('admin-logout', onLogout);
   }, []);
 
-  const login = useCallback(async (email, password) => {
-    const data = await adminApi('/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+  const login = useCallback(async (username, password) => {
+    const data = await adminApi('/login', { method: 'POST', body: JSON.stringify({ username, password }) });
     setToken(data.token);
     setAdmin(data.admin);
   }, []);
@@ -33,7 +33,13 @@ export function AdminAuthProvider({ children }) {
     setAdmin(null);
   }, []);
 
-  const value = useMemo(() => ({ admin, checking, login, logout }), [admin, checking, login, logout]);
+  // Used after the profile is changed: stores the fresh admin and the fresh login token.
+  const updateAdmin = useCallback((next, token) => {
+    if (token) setToken(token);
+    setAdmin(next);
+  }, []);
+
+  const value = useMemo(() => ({ admin, checking, login, logout, updateAdmin }), [admin, checking, login, logout, updateAdmin]);
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
 }
 

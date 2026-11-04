@@ -5,6 +5,7 @@ import { useLang } from '../context/LanguageContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useCustomerAuth } from '../context/CustomerAuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { assetUrl } from '../lib/api.js';
 import { ShopDropdown } from './ShopMenus.jsx';
 
 export default function Navbar() {
@@ -14,6 +15,7 @@ export default function Navbar() {
   const { customer } = useCustomerAuth();
   const { settings } = useSettings();
   const [first, ...rest] = String(settings.business_name).split(' ');
+  const logo = assetUrl(settings.logo_url);
 
   const linkClass = ({ isActive }) => `text-sm font-medium transition-colors hover:text-olive ${isActive ? 'text-olive' : 'text-stone-600 dark:text-stone-300'}`;
   const iconBtn = 'flex h-10 w-10 items-center justify-center rounded-full hover:bg-sand-100 dark:hover:bg-stone-800';
@@ -21,8 +23,11 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-sand-200/70 bg-sand-50/85 backdrop-blur-md dark:border-stone-800 dark:bg-stone-950/85">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="font-display text-xl font-semibold tracking-tight">
-          {first} {rest.length > 0 && <span className="text-olive">{rest.join(' ')}</span>}
+        <Link to="/" className="flex items-center gap-2.5 font-display text-xl font-semibold tracking-tight">
+          {logo && <img src={logo} alt="" className="h-9 w-auto max-w-[8rem] object-contain" />}
+          <span>
+            {first} {rest.length > 0 && <span className="text-olive">{rest.join(' ')}</span>}
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">

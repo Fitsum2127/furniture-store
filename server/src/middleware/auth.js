@@ -8,7 +8,7 @@ function adminSecret() {
 
 export function signAdminToken(admin) {
   return jwt.sign(
-    { id: admin.id, name: admin.name, email: admin.email, role: 'admin' },
+    { id: admin.id, name: admin.name, username: admin.username, role: 'admin' },
     adminSecret(),
     { expiresIn: '12h', algorithm: 'HS256' }
   );

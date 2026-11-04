@@ -4,31 +4,38 @@ import useFetch from '../../hooks/useFetch.js';
 import { useLang } from '../../context/LanguageContext.jsx';
 import { adminApi } from '../adminApi.js';
 import ActionMenu from '../ActionMenu.jsx';
+import { useFeedback } from '../feedback.jsx';
 import { Badge, ErrorBox, Loading, PageHeader, btnPrimary, card, inputClass, useFmt, useLabels } from '../ui.jsx';
 
 const statusColor = { new: 'blue', replied: 'green', closed: 'gray' };
 
-function MessageCard({ m, onChanged }) {
+function MessageCard({ m, onChanged, fb }) {
   const { t } = useLang();
   const { fmtDate } = useFmt();
   const { ms } = useLabels();
   const [reply, setReply] = useState(m.reply_text || '');
-  const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const act = async (fn) => {
-    setErr('');
+  const act = async (fn, okText) => {
     setBusy(true);
     try {
       await fn();
+      if (okText) fb.success(okText);
       onChanged();
     } catch (e) {
-      setErr(e.message);
+      fb.error(e.message);
     } finally {
       setBusy(false);
     }
   };
-  const patch = (body) => act(() => adminApi(`/messages/${m.id}`, { method: 'PATCH', body: JSON.stringify(body) }));
+  const patch = (body, okText) => act(() => adminApi(`/messages/${m.id}`, { method: 'PATCH', body: JSON.stringify(body) }), okText);
+  const remove = () =>
+    fb.confirm({
+      text: t('a_confirmDeleteMessage'),
+      confirmLabel: t('a_yesDelete'),
+      danger: true,
+      onConfirm: () => act(() => adminApi(`/messages/${m.id}`, { method: 'DELETE' }), t('a_messageDeleted')),
+    });
   const mailto = m.email ? `mailto:${m.email}?subject=${encodeURIComponent('Re: your message')}&body=${encodeURIComponent(reply)}` : null;
 
   return (
@@ -42,9 +49,9 @@ function MessageCard({ m, onChanged }) {
               mailto && { label: t('a_sendEmail'), icon: Mail, href: mailto },
               m.phone && { label: t('a_callCustomer'), icon: Phone, href: `tel:${m.phone}` },
               m.status !== 'closed'
-                ? { label: t('a_close'), icon: XCircle, onClick: () => patch({ status: 'closed' }) }
-                : { label: t('a_reopen'), icon: RotateCcw, onClick: () => patch({ status: 'new' }) },
-              { label: t('a_delete'), icon: Trash2, danger: true, onClick: () => window.confirm(t('a_confirmDeleteMessage')) && act(() => adminApi(`/messages/${m.id}`, { method: 'DELETE' })) },
+                ? { label: t('a_close'), icon: XCircle, onClick: () => patch({ status: 'closed' }, t('a_updated')) }
+                : { label: t('a_reopen'), icon: RotateCcw, onClick: () => patch({ status: 'new' }, t('a_updated')) },
+              { label: t('a_delete'), icon: Trash2, danger: true, onClick: remove },
             ]}
           />
         </div>
@@ -58,9 +65,8 @@ function MessageCard({ m, onChanged }) {
         <label className="text-xs font-medium" htmlFor={`reply-${m.id}`}>{t('a_yourReply')}</label>
         <textarea id={`reply-${m.id}`} value={reply} onChange={(e) => setReply(e.target.value)} rows={3} className={`${inputClass} mt-1 resize-none`} />
         {m.replied_at && <p className="mt-1 text-xs text-stone-500">{t('a_lastReply', { date: fmtDate(m.replied_at) })}</p>}
-        {err && <p className="mt-2 text-sm text-red-500" role="alert">{err}</p>}
         <div className="mt-3">
-          <button onClick={() => patch({ reply_text: reply })} disabled={busy || !reply.trim()} className={btnPrimary}>{t('a_saveReply')}</button>
+          <button onClick={() => patch({ reply_text: reply }, t('a_replySaved'))} disabled={busy || !reply.trim()} className={btnPrimary}>{t('a_saveReply')}</button>
         </div>
       </div>
     </li>
@@ -69,6 +75,7 @@ function MessageCard({ m, onChanged }) {
 
 export default function MessagesAdmin() {
   const { t } = useLang();
+  const fb = useFeedback();
   const { data, loading, error, retry } = useFetch(() => adminApi('/messages'), []);
   const [filter, setFilter] = useState('open');
   const list = (data || []).filter((m) => (filter === 'open' ? m.status !== 'closed' : filter === 'all' ? true : m.status === filter));
@@ -80,10 +87,11 @@ export default function MessagesAdmin() {
           <option value="open">{t('a_filterOpen')}</option><option value="new">{t('a_filterNew')}</option><option value="replied">{t('a_filterReplied')}</option><option value="closed">{t('a_filterClosed')}</option><option value="all">{t('a_filterAll')}</option>
         </select>
       </PageHeader>
+      {fb.banner}
       {loading ? <Loading /> : error ? <ErrorBox message={error} onRetry={retry} /> : list.length === 0 ? (
         <p className="py-10 text-center text-sm text-stone-500">{t('a_noMessages')}</p>
       ) : (
-        <ul className="space-y-4">{list.map((m) => <MessageCard key={m.id} m={m} onChanged={retry} />)}</ul>
+        <ul className="space-y-4">{list.map((m) => <MessageCard key={m.id} m={m} onChanged={retry} fb={fb} />)}</ul>
       )}
     </>
   );

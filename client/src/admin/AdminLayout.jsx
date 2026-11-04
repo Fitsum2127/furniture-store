@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  BarChart3, Bell, FileText, Info, KeyRound, Languages, LayoutDashboard, LogOut, Mail, Menu, MessageSquare, Moon, Package, Search, Settings, ShoppingCart, Star, Store, Sun, Tags, Users, X,
+  BarChart3, Bell, FileText, Image as ImageIcon, Info, Languages, LayoutDashboard, LogOut, Mail, Menu, MessageSquare, Moon, Package, Settings, ShoppingCart, Star, Store, Sun, Tags, UserCircle, Users, X,
 } from 'lucide-react';
 import { useAdminAuth } from './AdminAuthContext.jsx';
 import { adminApi } from './adminApi.js';
+import AdminSearch from './AdminSearch.jsx';
 import useFetch from '../hooks/useFetch.js';
 import { useLang } from '../context/LanguageContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
+import { assetUrl } from '../lib/api.js';
 import { Loading } from './ui.jsx';
 
 const GROUPS = [
@@ -24,14 +26,31 @@ const GROUPS = [
     { to: '/admin/messages', key: 'a_messages', icon: MessageSquare },
     { to: '/admin/subscribers', key: 'a_subscribers', icon: Mail },
     { to: '/admin/reviews', key: 'a_reviews', icon: Star },
+    { to: '/admin/hero', key: 'a_heroPage', icon: ImageIcon },
     { to: '/admin/about', key: 'a_aboutPage', icon: Info },
     { to: '/admin/content', key: 'a_content', icon: FileText },
   ]],
   ['a_grpSystem', [
     { to: '/admin/settings', key: 'a_settings', icon: Settings },
-    { to: '/admin/password', key: 'a_password', icon: KeyRound },
+    { to: '/admin/account', key: 'a_myAccount', icon: UserCircle },
   ]],
 ];
+
+const SEEN_KEY = 'adminSeenAlerts';
+const readSeen = () => {
+  try {
+    return JSON.parse(localStorage.getItem(SEEN_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
+};
+const saveSeen = (v) => {
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify(v));
+  } catch (e) {
+    /* ignore */
+  }
+};
 
 function usePopover() {
   const [open, setOpen] = useState(false);
@@ -50,12 +69,17 @@ function usePopover() {
 function Sidebar({ onNavigate }) {
   const { t } = useLang();
   const { settings } = useSettings();
+  const logo = assetUrl(settings.logo_url);
   const linkClass = ({ isActive }) =>
     `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${isActive ? 'bg-olive text-white' : 'text-stone-300 hover:bg-white/10'}`;
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-2 pb-6 pt-1">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive font-display text-lg font-bold text-white">{String(settings.business_name).charAt(0)}</span>
+        {logo ? (
+          <img src={logo} alt="" className="h-10 w-10 flex-none rounded-xl bg-white/10 object-contain p-0.5" />
+        ) : (
+          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-olive font-display text-lg font-bold text-white">{String(settings.business_name).charAt(0)}</span>
+        )}
         <div className="min-w-0">
           <p className="truncate font-display text-base font-semibold text-white">{settings.business_name}</p>
           <p className="text-xs text-stone-400">{t('a_admin')}</p>
@@ -87,12 +111,11 @@ export default function AdminLayout() {
   const { admin, checking, logout } = useAdminAuth();
   const { theme, toggleTheme } = useTheme();
   const { t, lang, toggleLang } = useLang();
-  const navigate = useNavigate();
   const { pathname } = useLocation();
   const [menu, setMenu] = useState(false);
-  const [search, setSearch] = useState('');
   const bell = usePopover();
   const profile = usePopover();
+  const [seen, setSeen] = useState(readSeen);
 
   const stats = useFetch(() => (admin ? adminApi('/stats') : Promise.resolve(null)), [admin && admin.id]);
   useEffect(() => {
@@ -101,10 +124,31 @@ export default function AdminLayout() {
   }, [stats.retry]);
   useEffect(() => setMenu(false), [pathname]);
 
+  const s = stats.data;
+  const counts = s ? { orders: s.newOrders, messages: s.newMessages, reviews: s.pendingReviews, stock: s.lowStock.length } : null;
+
+  // When items were handled (the count went down), lower the saved level so new ones count again.
+  useEffect(() => {
+    if (!counts) return;
+    const next = { ...seen };
+    let changed = false;
+    Object.keys(counts).forEach((k) => {
+      if ((next[k] || 0) > counts[k]) {
+        next[k] = counts[k];
+        changed = true;
+      }
+    });
+    if (changed) {
+      setSeen(next);
+      saveSeen(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats.data]);
+
   if (checking) return <Loading />;
   if (!admin) return <Navigate to="/admin/login" replace />;
 
-  const s = stats.data;
+  const unseen = counts ? Object.keys(counts).reduce((sum, k) => sum + Math.max(0, counts[k] - (seen[k] || 0)), 0) : 0;
   const alerts = s
     ? [
         s.newOrders > 0 && { to: '/admin/orders', text: t('a_nNewOrders', { n: s.newOrders }) },
@@ -114,9 +158,14 @@ export default function AdminLayout() {
       ].filter(Boolean)
     : [];
 
-  const submitSearch = (e) => {
-    e.preventDefault();
-    navigate(`/admin/orders${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`);
+  // Opening the bell marks everything as seen, so the red number disappears.
+  const toggleBell = () => {
+    if (!bell.open && counts) {
+      const next = { ...counts };
+      setSeen(next);
+      saveSeen(next);
+    }
+    bell.setOpen((o) => !o);
   };
 
   const iconBtn = 'flex h-10 w-10 items-center justify-center rounded-full border border-sand-200 bg-white transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800';
@@ -140,10 +189,7 @@ export default function AdminLayout() {
       <div className="min-w-0 flex-1 bg-sand-50 dark:bg-stone-900/40 md:rounded-3xl">
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-sand-200 bg-sand-50/90 px-4 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/90 md:rounded-t-3xl md:px-6">
           <button onClick={() => setMenu(true)} aria-label={t('a_menu')} className={`${iconBtn} md:hidden`}><Menu size={19} /></button>
-          <form onSubmit={submitSearch} className="relative min-w-0 flex-1 md:max-w-md">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('a_searchOrders')} aria-label={t('a_searchOrders')} className="w-full rounded-full border border-sand-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-olive dark:border-stone-800 dark:bg-stone-900" />
-          </form>
+          <AdminSearch />
           <div className="ml-auto flex items-center gap-2">
             <button onClick={toggleLang} aria-label={t('a_language')} className="flex h-10 items-center gap-1.5 rounded-full border border-sand-200 bg-white px-3 text-sm font-medium transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800">
               <Languages size={16} /> {lang === 'en' ? 'አማርኛ' : 'EN'}
@@ -151,9 +197,13 @@ export default function AdminLayout() {
             <button onClick={toggleTheme} aria-label={t('a_theme')} className={iconBtn}>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
 
             <div className="relative" ref={bell.ref}>
-              <button onClick={() => bell.setOpen((o) => !o)} aria-label={t('a_notifications')} aria-expanded={bell.open} className={`${iconBtn} relative`}>
+              <button onClick={toggleBell} aria-label={t('a_notifications')} aria-expanded={bell.open} className={`${iconBtn} relative`}>
                 <Bell size={18} />
-                {alerts.length > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500" />}
+                {unseen > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold leading-none text-white">
+                    {unseen > 99 ? '99+' : unseen}
+                  </span>
+                )}
               </button>
               {bell.open && (
                 <div className="absolute right-0 top-12 z-40 w-72 rounded-2xl border border-sand-200 bg-white p-3 shadow-xl dark:border-stone-800 dark:bg-stone-900">
@@ -170,17 +220,17 @@ export default function AdminLayout() {
             </div>
 
             <div className="relative" ref={profile.ref}>
-              <button onClick={() => profile.setOpen((o) => !o)} aria-expanded={profile.open} aria-label={admin.email} className="flex h-10 items-center gap-2 rounded-full border border-sand-200 bg-white pl-1 pr-3 transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-olive text-sm font-semibold text-white">{String(admin.name || admin.email).charAt(0).toUpperCase()}</span>
+              <button onClick={() => profile.setOpen((o) => !o)} aria-expanded={profile.open} aria-label={admin.name} className="flex h-10 items-center gap-2 rounded-full border border-sand-200 bg-white pl-1 pr-3 transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-olive text-sm font-semibold text-white">{String(admin.name || admin.username).charAt(0).toUpperCase()}</span>
                 <span className="hidden text-left leading-tight sm:block">
                   <span className="block max-w-[8rem] truncate text-sm font-semibold">{admin.name}</span>
-                  <span className="block text-[11px] text-stone-500">{t('a_admin')}</span>
+                  <span className="block max-w-[8rem] truncate text-[11px] text-stone-500">@{admin.username}</span>
                 </span>
               </button>
               {profile.open && (
                 <div className="absolute right-0 top-12 z-40 w-60 rounded-2xl border border-sand-200 bg-white p-2 shadow-xl dark:border-stone-800 dark:bg-stone-900">
-                  <p className="truncate px-3 py-2 text-xs text-stone-500">{admin.email}</p>
-                  <Link to="/admin/password" onClick={() => profile.setOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><KeyRound size={16} /> {t('a_password')}</Link>
+                  <p className="truncate px-3 py-2 text-xs text-stone-500">@{admin.username}</p>
+                  <Link to="/admin/account" onClick={() => profile.setOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><UserCircle size={16} /> {t('a_myAccount')}</Link>
                   <Link to="/" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><Store size={16} /> {t('a_viewStore')}</Link>
                   <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"><LogOut size={16} /> {t('a_logout')}</button>
                 </div>

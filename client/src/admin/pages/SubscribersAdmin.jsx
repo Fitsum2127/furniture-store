@@ -4,25 +4,32 @@ import useFetch from '../../hooks/useFetch.js';
 import { useLang } from '../../context/LanguageContext.jsx';
 import { adminApi } from '../adminApi.js';
 import ActionMenu from '../ActionMenu.jsx';
-import { ErrorBox, Loading, Notice, PageHeader, btnGhost, card, inputClass, useFmt } from '../ui.jsx';
+import { useFeedback } from '../feedback.jsx';
+import { ErrorBox, Loading, PageHeader, btnGhost, card, inputClass, useFmt } from '../ui.jsx';
 
 export default function SubscribersAdmin() {
   const { t } = useLang();
   const { fmtDate } = useFmt();
+  const fb = useFeedback();
   const { data, loading, error, retry } = useFetch(() => adminApi('/subscribers'), []);
   const [q, setQ] = useState('');
-  const [msg, setMsg] = useState('');
   const list = (data || []).filter((s) => s.email.includes(q.trim().toLowerCase()));
 
-  const remove = async (s) => {
-    if (!window.confirm(t('a_confirmRemove', { email: s.email }))) return;
-    try {
-      await adminApi(`/subscribers/${s.id}`, { method: 'DELETE' });
-      retry();
-    } catch (err) {
-      setMsg(err.message);
-    }
-  };
+  const remove = (s) =>
+    fb.confirm({
+      text: t('a_confirmRemove', { email: s.email }),
+      confirmLabel: t('a_yesDelete'),
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await adminApi(`/subscribers/${s.id}`, { method: 'DELETE' });
+          fb.success(t('a_subscriberRemoved', { email: s.email }));
+          retry();
+        } catch (err) {
+          fb.error(err.message);
+        }
+      },
+    });
 
   const exportCsv = async () => {
     try {
@@ -34,16 +41,16 @@ export default function SubscribersAdmin() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setMsg(err.message);
+      fb.error(err.message);
     }
   };
 
   const copyAll = async () => {
     try {
       await navigator.clipboard.writeText(list.map((s) => s.email).join(', '));
-      setMsg(t('a_nCopied', { n: list.length }));
+      fb.success(t('a_nCopied', { n: list.length }));
     } catch (err) {
-      setMsg(t('a_copyFailed'));
+      fb.error(t('a_copyFailed'));
     }
   };
 
@@ -53,8 +60,8 @@ export default function SubscribersAdmin() {
         <button onClick={copyAll} className={btnGhost}><Copy size={15} /> {t('a_copyEmails')}</button>
         <button onClick={exportCsv} className={btnGhost}><Download size={15} /> {t('a_exportCsv')}</button>
       </PageHeader>
+      {fb.banner}
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('a_searchEmail')} aria-label={t('a_searchEmail')} className={`${inputClass} mb-4 max-w-sm`} />
-      {msg && <Notice>{msg}</Notice>}
       {loading ? <Loading /> : error ? <ErrorBox message={error} onRetry={retry} /> : list.length === 0 ? (
         <p className="py-10 text-center text-sm text-stone-500">{t('a_noSubscribers')}</p>
       ) : (

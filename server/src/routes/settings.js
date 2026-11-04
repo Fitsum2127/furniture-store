@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import pool from '../config/db.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { deleteUploadedFile, removeFiles, uploadImages } from '../middleware/upload.js';
 import { DEFAULTS, clearSettingsCache, getSettings } from '../services/settings.js';
 import { HttpError, cleanText, isEmail, isHttpUrl, looksLikePhone } from '../middleware/validate.js';
 
 const router = Router();
 
-// Public: business information used by the storefront (contact details, delivery, enabled payment methods).
+// Public: business information used by the storefront (contact details, delivery, logo, enabled payment methods).
 router.get('/', async (_req, res) => {
   res.set('Cache-Control', 'public, max-age=30');
   res.json(await getSettings());
@@ -22,6 +23,9 @@ adminSettingsRouter.get('/', async (_req, res) => {
 const FLAG_KEYS = ['payment_cod_enabled', 'payment_chapa_enabled', 'payment_telebirr_enabled'];
 const URL_KEYS = ['telegram', 'facebook', 'instagram', 'tiktok'];
 const NUMBER_KEYS = ['delivery_fee', 'free_delivery_min_subtotal'];
+const IMAGE_KEYS = ['logo_url', 'favicon_url'];
+const IMAGE_KIND = { logo: 'logo_url', favicon: 'favicon_url' };
+const UPSERT = 'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)';
 
 // A gateway can only be switched on after its real credentials and integration exist.
 const GATEWAY_ENV = {
@@ -37,10 +41,7 @@ function validateSetting(key, value) {
     const off = value === false || value === 0 || v === '0' || v.toLowerCase() === 'false';
     if (!on && !off) throw new HttpError(400, `Invalid value for ${key}`);
     if (on && GATEWAY_ENV[key] && !process.env[GATEWAY_ENV[key][0]]) {
-      throw new HttpError(
-        400,
-        `${GATEWAY_ENV[key][1]} cannot be enabled yet: its real integration and credentials are not set up.`
-      );
+      throw new HttpError(400, `${GATEWAY_ENV[key][1]} cannot be enabled yet: its real integration and credentials are not set up.`);
     }
     return on ? '1' : '0';
   }
@@ -88,6 +89,7 @@ adminSettingsRouter.put('/', async (req, res) => {
   const body = req.body || {};
   const entries = [];
   for (const key of Object.keys(DEFAULTS)) {
+    if (IMAGE_KEYS.includes(key)) continue; // logos change only through the upload endpoints below
     if (Object.prototype.hasOwnProperty.call(body, key)) entries.push([key, validateSetting(key, body[key])]);
   }
   if (entries.length === 0) throw new HttpError(400, 'Nothing to update');
@@ -96,6 +98,33 @@ adminSettingsRouter.put('/', async (req, res) => {
     'INSERT INTO settings (setting_key, setting_value) VALUES ? ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)',
     [entries]
   );
+  clearSettingsCache();
+  res.json(await getSettings({ fresh: true }));
+});
+
+// Upload the website logo (kind = logo) or the browser tab icon (kind = favicon).
+adminSettingsRouter.post('/images/:kind', uploadImages.single('image'), async (req, res) => {
+  const key = IMAGE_KIND[req.params.kind];
+  try {
+    if (!key) throw new HttpError(404, 'Not found');
+    if (!req.file) throw new HttpError(400, 'Please choose a JPG, PNG or WebP image (up to 5 MB).');
+    const current = await getSettings({ fresh: true });
+    await pool.query(UPSERT, [key, `/uploads/${req.file.filename}`]);
+    deleteUploadedFile(current[key]);
+    clearSettingsCache();
+    res.json(await getSettings({ fresh: true }));
+  } catch (err) {
+    removeFiles(req.file ? [req.file] : []);
+    throw err;
+  }
+});
+
+adminSettingsRouter.delete('/images/:kind', async (req, res) => {
+  const key = IMAGE_KIND[req.params.kind];
+  if (!key) throw new HttpError(404, 'Not found');
+  const current = await getSettings({ fresh: true });
+  await pool.query(UPSERT, [key, '']);
+  deleteUploadedFile(current[key]);
   clearSettingsCache();
   res.json(await getSettings({ fresh: true }));
 });

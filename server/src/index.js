@@ -23,6 +23,8 @@ import pagesRouter, { adminContentRouter } from './routes/pages.js';
 import { publicExtraRouter, adminExtraRouter } from './routes/extra.js';
 import seoRouter from './routes/seo.js';
 import adminAboutRouter from './routes/adminAbout.js';
+import adminHeroRouter from './routes/adminHero.js';
+import adminAuthRouter from './routes/adminAuth.js';
 import adminRouter from './routes/admin.js';
 import adminCatalogRouter from './routes/adminCatalog.js';
 import adminReportsRouter from './routes/adminReports.js';
@@ -114,8 +116,10 @@ app.use('/api/content', publicExtraRouter);
 app.use('/api/content', pagesRouter);
 
 app.use('/api/admin/about', adminAboutRouter);
+app.use('/api/admin/hero', adminHeroRouter);
 app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin/content', adminContentRouter);
+app.use('/api/admin', adminAuthRouter); // login, me and profile come first
 app.use('/api/admin', adminRouter);
 app.use('/api/admin', adminCatalogRouter);
 app.use('/api/admin', adminReportsRouter);
@@ -124,7 +128,7 @@ app.use('/api/admin', adminExtraRouter);
 app.use('/seo', seoRouter);
 app.use(seoRouter);
 
-// Optional: serve the built website from this same server (SERVE_CLIENT=1). One address for site, API and images.
+// Optional: serve the built website from this same server (SERVE_CLIENT=1).
 const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
 if (process.env.SERVE_CLIENT === '1' && fs.existsSync(clientDist)) {
   app.use('/assets', express.static(path.join(clientDist, 'assets'), { maxAge: '365d', immutable: true }));
