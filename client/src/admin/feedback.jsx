@@ -17,7 +17,7 @@ function Message({ msg, onClose }) {
   return (
     <div role={msg.type === 'error' ? 'alert' : 'status'} className={`mb-4 flex items-start gap-3 rounded-2xl border p-3.5 text-sm shadow-sm ${STYLE[msg.type]}`}>
       <Icon size={18} className="mt-0.5 flex-none" />
-      <p className="flex-1">{msg.text}</p>
+      <p className="min-w-0 flex-1 break-words">{msg.text}</p>
       <button type="button" onClick={onClose} aria-label={t('a_dismiss')} className="flex-none opacity-70 hover:opacity-100"><X size={16} /></button>
     </div>
   );
@@ -46,7 +46,7 @@ function Dialog({ dialog, onClose }) {
     <form onSubmit={submit} role="alertdialog" aria-live="assertive" className="mb-4 rounded-2xl border-2 border-olive bg-white p-4 shadow-lg dark:bg-stone-900">
       <p className="flex items-start gap-2 text-sm font-medium">
         <AlertTriangle size={18} className={`mt-0.5 flex-none ${dialog.danger ? 'text-red-500' : 'text-olive'}`} />
-        <span>{dialog.text}</span>
+        <span className="min-w-0 break-words">{dialog.text}</span>
       </p>
       {isPrompt && (
         <div className="mt-3 max-w-sm">
@@ -93,8 +93,9 @@ export function useFeedback() {
   const prompt = useCallback((opts) => setDialog({ kind: 'prompt', ...opts }), []);
   const closeDialog = useCallback(() => setDialog(null), []);
 
+  // On a phone the header has two rows, so the sticky message sits lower than on a computer.
   const banner = (
-    <div className="sticky top-[4.75rem] z-20">
+    <div className="sticky top-[7.25rem] z-20 md:top-[4.75rem]">
       {dialog ? <Dialog key={dialog.text} dialog={dialog} onClose={closeDialog} /> : msg ? <Message msg={msg} onClose={clear} /> : null}
     </div>
   );

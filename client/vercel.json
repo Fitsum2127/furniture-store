@@ -1,24 +1,9 @@
 {
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://furniture-store-2zu8.onrender.com/api/:path*"
-    },
-    {
-      "source": "/uploads/:path*",
-      "destination": "https://furniture-store-2zu8.onrender.com/uploads/:path*"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "https://furniture-store-2zu8.onrender.com/seo/sitemap.xml"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "https://furniture-store-2zu8.onrender.com/seo/robots.txt"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/:path*", "destination": "https://furniture-store-2zu8.onrender.com/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://furniture-store-2zu8.onrender.com/uploads/:path*" },
+    { "source": "/sitemap.xml", "destination": "https://furniture-store-2zu8.onrender.com/seo/sitemap.xml" },
+    { "source": "/robots.txt", "destination": "https://furniture-store-2zu8.onrender.com/seo/robots.txt" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -61,7 +61,11 @@ function usePopover() {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener('touchstart', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('touchstart', close);
+    };
   }, [open]);
   return { open, setOpen, ref };
 }
@@ -124,6 +128,14 @@ export default function AdminLayout() {
   }, [stats.retry]);
   useEffect(() => setMenu(false), [pathname]);
 
+  // The page behind the phone menu must not scroll.
+  useEffect(() => {
+    document.body.style.overflow = menu ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menu]);
+
   const s = stats.data;
   const counts = s ? { orders: s.newOrders, messages: s.newMessages, reviews: s.pendingReviews, stock: s.lowStock.length } : null;
 
@@ -165,10 +177,12 @@ export default function AdminLayout() {
       setSeen(next);
       saveSeen(next);
     }
+    profile.setOpen(false);
     bell.setOpen((o) => !o);
   };
 
-  const iconBtn = 'flex h-10 w-10 items-center justify-center rounded-full border border-sand-200 bg-white transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800';
+  const iconBtn = 'flex h-10 w-10 flex-none items-center justify-center rounded-full border border-sand-200 bg-white transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800';
+  const popover = 'absolute right-0 top-12 z-40 w-72 max-w-[calc(100vw_-_1.5rem)] rounded-2xl border border-sand-200 bg-white p-3 shadow-xl dark:border-stone-800 dark:bg-stone-900';
 
   return (
     <div className="min-h-screen bg-sand-100 dark:bg-stone-950 md:flex md:gap-4 md:p-4">
@@ -178,68 +192,80 @@ export default function AdminLayout() {
 
       {menu && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMenu(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 overflow-y-auto bg-stone-900 p-4">
-            <button onClick={() => setMenu(false)} aria-label={t('a_close')} className="absolute right-3 top-3 text-stone-400"><X size={20} /></button>
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMenu(false)} />
+          <aside className="absolute inset-y-0 left-0 w-[85vw] max-w-xs overflow-y-auto bg-stone-900 p-4 shadow-2xl">
+            <button onClick={() => setMenu(false)} aria-label={t('a_close')} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-stone-300 hover:bg-white/10"><X size={20} /></button>
             <Sidebar onNavigate={() => setMenu(false)} />
           </aside>
         </div>
       )}
 
-      <div className="min-w-0 flex-1 bg-sand-50 dark:bg-stone-900/40 md:rounded-3xl">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-sand-200 bg-sand-50/90 px-4 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/90 md:rounded-t-3xl md:px-6">
-          <button onClick={() => setMenu(true)} aria-label={t('a_menu')} className={`${iconBtn} md:hidden`}><Menu size={19} /></button>
-          <AdminSearch />
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={toggleLang} aria-label={t('a_language')} className="flex h-10 items-center gap-1.5 rounded-full border border-sand-200 bg-white px-3 text-sm font-medium transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800">
-              <Languages size={16} /> {lang === 'en' ? 'አማርኛ' : 'EN'}
-            </button>
-            <button onClick={toggleTheme} aria-label={t('a_theme')} className={iconBtn}>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
+      <div className="min-w-0 max-w-full flex-1 bg-sand-50 dark:bg-stone-900/40 md:rounded-3xl">
+        <header className="sticky top-0 z-30 border-b border-sand-200 bg-sand-50/95 px-3 py-2.5 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95 sm:px-4 md:rounded-t-3xl md:px-6 md:py-3">
+          <div className="flex flex-wrap items-center gap-2 md:flex-nowrap md:gap-3">
+            <button onClick={() => setMenu(true)} aria-label={t('a_menu')} className={`${iconBtn} md:hidden`}><Menu size={19} /></button>
 
-            <div className="relative" ref={bell.ref}>
-              <button onClick={toggleBell} aria-label={t('a_notifications')} aria-expanded={bell.open} className={`${iconBtn} relative`}>
-                <Bell size={18} />
-                {unseen > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold leading-none text-white">
-                    {unseen > 99 ? '99+' : unseen}
-                  </span>
-                )}
-              </button>
-              {bell.open && (
-                <div className="absolute right-0 top-12 z-40 w-72 rounded-2xl border border-sand-200 bg-white p-3 shadow-xl dark:border-stone-800 dark:bg-stone-900">
-                  <p className="px-2 pb-2 text-sm font-semibold">{t('a_notifications')}</p>
-                  {alerts.length === 0 ? (
-                    <p className="px-2 py-3 text-sm text-stone-500">{t('a_nothingNew')}</p>
-                  ) : (
-                    alerts.map((a) => (
-                      <Link key={a.to} to={a.to} onClick={() => bell.setOpen(false)} className="block rounded-xl px-2 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800">{a.text}</Link>
-                    ))
-                  )}
-                </div>
-              )}
+            {/* On a phone the search box has its own full-width row under the buttons. */}
+            <div className="order-last w-full md:order-none md:w-auto md:max-w-md md:min-w-0 md:flex-1">
+              <AdminSearch />
             </div>
 
-            <div className="relative" ref={profile.ref}>
-              <button onClick={() => profile.setOpen((o) => !o)} aria-expanded={profile.open} aria-label={admin.name} className="flex h-10 items-center gap-2 rounded-full border border-sand-200 bg-white pl-1 pr-3 transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-olive text-sm font-semibold text-white">{String(admin.name || admin.username).charAt(0).toUpperCase()}</span>
-                <span className="hidden text-left leading-tight sm:block">
-                  <span className="block max-w-[8rem] truncate text-sm font-semibold">{admin.name}</span>
-                  <span className="block max-w-[8rem] truncate text-[11px] text-stone-500">@{admin.username}</span>
-                </span>
+            <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+              <button onClick={toggleLang} aria-label={t('a_language')} className="flex h-10 items-center gap-1.5 rounded-full border border-sand-200 bg-white px-2.5 text-sm font-medium transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800 sm:px-3">
+                <Languages size={16} /> {lang === 'en' ? 'አማርኛ' : 'EN'}
               </button>
-              {profile.open && (
-                <div className="absolute right-0 top-12 z-40 w-60 rounded-2xl border border-sand-200 bg-white p-2 shadow-xl dark:border-stone-800 dark:bg-stone-900">
-                  <p className="truncate px-3 py-2 text-xs text-stone-500">@{admin.username}</p>
-                  <Link to="/admin/account" onClick={() => profile.setOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><UserCircle size={16} /> {t('a_myAccount')}</Link>
-                  <Link to="/" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><Store size={16} /> {t('a_viewStore')}</Link>
-                  <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"><LogOut size={16} /> {t('a_logout')}</button>
-                </div>
-              )}
+              <button onClick={toggleTheme} aria-label={t('a_theme')} className={iconBtn}>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
+
+              <div className="relative" ref={bell.ref}>
+                <button onClick={toggleBell} aria-label={t('a_notifications')} aria-expanded={bell.open} className={`${iconBtn} relative`}>
+                  <Bell size={18} />
+                  {unseen > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold leading-none text-white">
+                      {unseen > 99 ? '99+' : unseen}
+                    </span>
+                  )}
+                </button>
+                {bell.open && (
+                  <div className={popover}>
+                    <p className="px-2 pb-2 text-sm font-semibold">{t('a_notifications')}</p>
+                    {alerts.length === 0 ? (
+                      <p className="px-2 py-3 text-sm text-stone-500">{t('a_nothingNew')}</p>
+                    ) : (
+                      alerts.map((a) => (
+                        <Link key={a.to} to={a.to} onClick={() => bell.setOpen(false)} className="block rounded-xl px-2 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800">{a.text}</Link>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative" ref={profile.ref}>
+                <button
+                  onClick={() => { bell.setOpen(false); profile.setOpen((o) => !o); }}
+                  aria-expanded={profile.open}
+                  aria-label={admin.name}
+                  className="flex h-10 flex-none items-center gap-2 rounded-full border border-sand-200 bg-white pl-1 pr-1 transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800 sm:pr-3"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-olive text-sm font-semibold text-white">{String(admin.name || admin.username).charAt(0).toUpperCase()}</span>
+                  <span className="hidden text-left leading-tight sm:block">
+                    <span className="block max-w-[8rem] truncate text-sm font-semibold">{admin.name}</span>
+                    <span className="block max-w-[8rem] truncate text-[11px] text-stone-500">@{admin.username}</span>
+                  </span>
+                </button>
+                {profile.open && (
+                  <div className={`${popover} w-60 p-2`}>
+                    <p className="truncate px-3 py-2 text-xs text-stone-500">{admin.name} · @{admin.username}</p>
+                    <Link to="/admin/account" onClick={() => profile.setOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><UserCircle size={16} /> {t('a_myAccount')}</Link>
+                    <Link to="/" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><Store size={16} /> {t('a_viewStore')}</Link>
+                    <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"><LogOut size={16} /> {t('a_logout')}</button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8"><Outlet /></main>
+        <main className="min-w-0 p-4 sm:p-6 lg:p-8"><Outlet /></main>
       </div>
     </div>
   );

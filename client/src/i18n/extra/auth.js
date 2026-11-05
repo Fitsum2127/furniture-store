@@ -1,0 +1,26 @@
+export default {
+  en: {
+    authWelcome: 'Welcome back to {name}!',
+    authWelcomeSub: 'Log in to your account',
+    authCreateTitle: 'Create your account',
+    authCreateSub: 'Save your details and track your orders.',
+    authForgot: 'Forgot password?',
+    authNoAccount: "Don't have an account?",
+    authHaveAccount: 'Already have an account?',
+    authTagline: 'Find the furniture that makes a house a home',
+    authTaglineSub: 'Log in to track your orders, save your details and check out faster.',
+    authSlide: 'Show picture',
+  },
+  am: {
+    authWelcome: 'እንኳን ወደ {name} ደህና ተመለሱ!',
+    authWelcomeSub: 'ወደ መለያዎ ይግቡ',
+    authCreateTitle: 'መለያዎን ይፍጠሩ',
+    authCreateSub: 'መረጃዎን ያስቀምጡ፣ ትዕዛዞችዎንም ይከታተሉ።',
+    authForgot: 'የይለፍ ቃል ረሱ?',
+    authNoAccount: 'መለያ የለዎትም?',
+    authHaveAccount: 'መለያ አለዎት?',
+    authTagline: 'ቤትን መኖሪያ የሚያደርግ የቤት ዕቃ ያግኙ',
+    authTaglineSub: 'ትዕዛዞችን ለመከታተል፣ መረጃዎን ለማስቀመጥና በፍጥነት ለመክፈል ይግቡ።',
+    authSlide: 'ሥዕል አሳይ',
+  },
+};
