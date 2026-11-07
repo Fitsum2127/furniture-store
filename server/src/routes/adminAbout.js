@@ -1,18 +1,10 @@
 import { Router } from 'express';
-import fs from 'fs';
-import path from 'path';
 import pool from '../config/db.js';
 import { requireAdmin } from '../middleware/auth.js';
-import { uploadImages, uploadsDir } from '../middleware/upload.js';
+import { deleteUploadedFile, removeFiles, uploadImages } from '../middleware/upload.js';
 
 const router = Router();
 router.use(requireAdmin);
-
-function unlinkUpload(url) {
-  if (url && url.startsWith('/uploads/')) {
-    fs.unlink(path.join(uploadsDir, path.basename(url)), () => {});
-  }
-}
 
 function readSection(body) {
   const s = (v) => String(v == null ? '' : v).trim();
@@ -31,20 +23,18 @@ function readSection(body) {
   return { data, errors };
 }
 
-router.get('/', async (_req, res, next) => {
-  try {
-    const [rows] = await pool.query('SELECT * FROM about_sections ORDER BY sort_order, id');
-    res.json(rows);
-  } catch (err) { next(err); }
+router.get('/', async (_req, res) => {
+  const [rows] = await pool.query('SELECT * FROM about_sections ORDER BY sort_order, id');
+  res.json(rows);
 });
 
-router.post('/', uploadImages.single('image'), async (req, res, next) => {
+router.post('/', uploadImages.single('image'), async (req, res) => {
+  const { data, errors } = readSection(req.body || {});
+  if (errors.length) {
+    removeFiles(req.file ? [req.file] : []);
+    return res.status(400).json({ error: errors.join('. ') });
+  }
   try {
-    const { data, errors } = readSection(req.body || {});
-    if (errors.length) {
-      if (req.file) unlinkUpload(`/uploads/${req.file.filename}`);
-      return res.status(400).json({ error: errors.join('. ') });
-    }
     const [[row]] = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM about_sections');
     const image = req.file ? `/uploads/${req.file.filename}` : null;
     const [result] = await pool.query(
@@ -52,33 +42,31 @@ router.post('/', uploadImages.single('image'), async (req, res, next) => {
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [data.title_en, data.title_am, data.body_en, data.body_am, image, row.next, data.is_active]
     );
-    res.status(201).json({ id: result.insertId });
-  } catch (err) { next(err); }
+    return res.status(201).json({ id: result.insertId });
+  } catch (err) {
+    removeFiles(req.file ? [req.file] : []);
+    throw err;
+  }
 });
 
-router.put('/:id', uploadImages.single('image'), async (req, res, next) => {
+router.put('/:id', uploadImages.single('image'), async (req, res) => {
+  const id = Number(req.params.id);
+  const body = req.body || {};
+  const { data, errors } = readSection(body);
+  if (errors.length) {
+    removeFiles(req.file ? [req.file] : []);
+    return res.status(400).json({ error: errors.join('. ') });
+  }
   try {
-    const id = Number(req.params.id);
-    const body = req.body || {};
-    const { data, errors } = readSection(body);
-    if (errors.length) {
-      if (req.file) unlinkUpload(`/uploads/${req.file.filename}`);
-      return res.status(400).json({ error: errors.join('. ') });
-    }
     const [[existing]] = await pool.query('SELECT image_url FROM about_sections WHERE id = ?', [id]);
     if (!existing) {
-      if (req.file) unlinkUpload(`/uploads/${req.file.filename}`);
+      removeFiles(req.file ? [req.file] : []);
       return res.status(404).json({ error: 'Section not found' });
     }
 
     let image = existing.image_url;
-    if (req.file) {
-      image = `/uploads/${req.file.filename}`;
-      unlinkUpload(existing.image_url);
-    } else if (body.remove_image === '1') {
-      image = null;
-      unlinkUpload(existing.image_url);
-    }
+    if (req.file) image = `/uploads/${req.file.filename}`;
+    else if (body.remove_image === '1') image = null;
 
     await pool.query(
       `UPDATE about_sections
@@ -86,49 +74,47 @@ router.put('/:id', uploadImages.single('image'), async (req, res, next) => {
         WHERE id = ?`,
       [data.title_en, data.title_am, data.body_en, data.body_am, image, data.is_active, id]
     );
-    res.json({ ok: true });
-  } catch (err) { next(err); }
+    if (image !== existing.image_url) deleteUploadedFile(existing.image_url);
+    return res.json({ ok: true });
+  } catch (err) {
+    removeFiles(req.file ? [req.file] : []);
+    throw err;
+  }
 });
 
-router.patch('/:id/active', async (req, res, next) => {
-  try {
-    const active = req.body && (req.body.is_active === 1 || req.body.is_active === true) ? 1 : 0;
-    await pool.query('UPDATE about_sections SET is_active = ? WHERE id = ?', [active, Number(req.params.id)]);
-    res.json({ ok: true });
-  } catch (err) { next(err); }
+router.patch('/:id/active', async (req, res) => {
+  const active = req.body && (req.body.is_active === 1 || req.body.is_active === true) ? 1 : 0;
+  await pool.query('UPDATE about_sections SET is_active = ? WHERE id = ?', [active, Number(req.params.id)]);
+  res.json({ ok: true });
 });
 
-router.patch('/:id/move', async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const direction = req.body && req.body.direction;
-    if (!['up', 'down'].includes(direction)) return res.status(400).json({ error: 'Invalid direction' });
+router.patch('/:id/move', async (req, res) => {
+  const id = Number(req.params.id);
+  const direction = req.body && req.body.direction;
+  if (!['up', 'down'].includes(direction)) return res.status(400).json({ error: 'Invalid direction' });
 
-    const [rows] = await pool.query('SELECT id FROM about_sections ORDER BY sort_order, id');
-    const ids = rows.map((r) => r.id);
-    const i = ids.indexOf(id);
-    if (i === -1) return res.status(404).json({ error: 'Section not found' });
+  const [rows] = await pool.query('SELECT id FROM about_sections ORDER BY sort_order, id');
+  const ids = rows.map((r) => r.id);
+  const i = ids.indexOf(id);
+  if (i === -1) return res.status(404).json({ error: 'Section not found' });
 
-    const j = direction === 'up' ? i - 1 : i + 1;
-    if (j < 0 || j >= ids.length) return res.json({ ok: true });
+  const j = direction === 'up' ? i - 1 : i + 1;
+  if (j < 0 || j >= ids.length) return res.json({ ok: true });
 
-    [ids[i], ids[j]] = [ids[j], ids[i]];
-    for (let k = 0; k < ids.length; k += 1) {
-      await pool.query('UPDATE about_sections SET sort_order = ? WHERE id = ?', [k, ids[k]]);
-    }
-    res.json({ ok: true });
-  } catch (err) { next(err); }
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  for (let k = 0; k < ids.length; k += 1) {
+    await pool.query('UPDATE about_sections SET sort_order = ? WHERE id = ?', [k, ids[k]]);
+  }
+  return res.json({ ok: true });
 });
 
-router.delete('/:id', async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const [[existing]] = await pool.query('SELECT image_url FROM about_sections WHERE id = ?', [id]);
-    if (!existing) return res.status(404).json({ error: 'Section not found' });
-    await pool.query('DELETE FROM about_sections WHERE id = ?', [id]);
-    unlinkUpload(existing.image_url);
-    res.json({ deleted: true });
-  } catch (err) { next(err); }
+router.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const [[existing]] = await pool.query('SELECT image_url FROM about_sections WHERE id = ?', [id]);
+  if (!existing) return res.status(404).json({ error: 'Section not found' });
+  await pool.query('DELETE FROM about_sections WHERE id = ?', [id]);
+  deleteUploadedFile(existing.image_url);
+  return res.json({ deleted: true });
 });
 
 export default router;

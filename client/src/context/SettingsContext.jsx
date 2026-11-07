@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import useFetch from '../hooks/useFetch.js';
 import { api, assetUrl } from '../lib/api.js';
 
@@ -24,11 +24,31 @@ const SettingsContext = createContext({ settings: DEFAULTS, loaded: false, reloa
 
 export function SettingsProvider({ children }) {
   const { data, retry } = useFetch(() => api('/settings'), []);
+  const [bad, setBad] = useState([]); // image addresses whose file is missing
+
+  // Check that the logo and the icon files really exist.
+  useEffect(() => {
+    if (!data) return;
+    ['logo_url', 'favicon_url'].forEach((key) => {
+      const raw = data[key];
+      const url = assetUrl(raw);
+      if (!url) return;
+      const img = new Image();
+      img.onerror = () => setBad((prev) => (prev.includes(raw) ? prev : [...prev, raw]));
+      img.src = url;
+    });
+  }, [data]);
+
+  const settings = useMemo(() => {
+    const s = { ...DEFAULTS, ...(data || {}) };
+    if (bad.includes(s.logo_url)) s.logo_url = '';
+    if (bad.includes(s.favicon_url)) s.favicon_url = '';
+    return s;
+  }, [data, bad]);
 
   // The icon in the browser tab comes from the settings (the admin can change it).
   useEffect(() => {
-    if (!data) return;
-    const href = assetUrl(data.favicon_url || data.logo_url);
+    const href = assetUrl(settings.favicon_url || settings.logo_url);
     if (!href) return;
     let link = document.querySelector("link[rel~='icon']");
     if (!link) {
@@ -38,9 +58,9 @@ export function SettingsProvider({ children }) {
     }
     link.removeAttribute('type');
     link.href = href;
-  }, [data]);
+  }, [settings.favicon_url, settings.logo_url]);
 
-  const value = useMemo(() => ({ settings: { ...DEFAULTS, ...(data || {}) }, loaded: Boolean(data), reload: retry }), [data, retry]);
+  const value = useMemo(() => ({ settings, loaded: Boolean(data), reload: retry }), [settings, data, retry]);
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
 

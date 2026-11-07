@@ -70,6 +70,19 @@ function usePopover() {
   return { open, setOpen, ref };
 }
 
+// The admin's photo, or the first letter of the name when there is no photo (or the file is missing).
+function Avatar({ admin, className }) {
+  const [failed, setFailed] = useState(false);
+  const src = assetUrl(admin.avatarUrl);
+  useEffect(() => setFailed(false), [src]);
+  if (src && !failed) return <img src={src} alt="" onError={() => setFailed(true)} className={`${className} object-cover`} />;
+  return (
+    <span className={`${className} flex items-center justify-center bg-olive text-sm font-semibold text-white`}>
+      {String(admin.name || admin.username).charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
 function Sidebar({ onNavigate }) {
   const { t } = useLang();
   const { settings } = useSettings();
@@ -246,7 +259,7 @@ export default function AdminLayout() {
                   aria-label={admin.name}
                   className="flex h-10 flex-none items-center gap-2 rounded-full border border-sand-200 bg-white pl-1 pr-1 transition hover:bg-sand-100 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800 sm:pr-3"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-olive text-sm font-semibold text-white">{String(admin.name || admin.username).charAt(0).toUpperCase()}</span>
+                  <Avatar admin={admin} className="h-8 w-8 rounded-full" />
                   <span className="hidden text-left leading-tight sm:block">
                     <span className="block max-w-[8rem] truncate text-sm font-semibold">{admin.name}</span>
                     <span className="block max-w-[8rem] truncate text-[11px] text-stone-500">@{admin.username}</span>
@@ -254,7 +267,13 @@ export default function AdminLayout() {
                 </button>
                 {profile.open && (
                   <div className={`${popover} w-60 p-2`}>
-                    <p className="truncate px-3 py-2 text-xs text-stone-500">{admin.name} · @{admin.username}</p>
+                    <div className="flex items-center gap-3 px-3 py-2">
+                      <Avatar admin={admin} className="h-10 w-10 flex-none rounded-full" />
+                      <p className="min-w-0 text-xs text-stone-500">
+                        <span className="block truncate text-sm font-semibold text-stone-800 dark:text-stone-100">{admin.name}</span>
+                        <span className="block truncate">@{admin.username}</span>
+                      </p>
+                    </div>
                     <Link to="/admin/account" onClick={() => profile.setOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><UserCircle size={16} /> {t('a_myAccount')}</Link>
                     <Link to="/" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-stone-800"><Store size={16} /> {t('a_viewStore')}</Link>
                     <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"><LogOut size={16} /> {t('a_logout')}</button>

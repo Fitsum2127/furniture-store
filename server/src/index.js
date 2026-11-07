@@ -6,8 +6,10 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from './config/db.js';
+import './services/schema.js'; // creates the photo table and new columns when the server starts
 import { apiLimiter } from './middleware/rateLimit.js';
 import { uploadsDir } from './middleware/upload.js';
+import mediaRouter from './routes/media.js';
 import productsRouter from './routes/products.js';
 import categoriesRouter from './routes/categories.js';
 import cartRouter from './routes/cart.js';
@@ -57,6 +59,8 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
 app.use(cors({ origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)) }));
 app.use(express.json({ limit: '200kb' }));
 
+// Photos live in the database (permanent). The disk folder is only a fallback for old files.
+app.use('/uploads', mediaRouter);
 app.use(
   '/uploads',
   express.static(uploadsDir, {
@@ -119,7 +123,7 @@ app.use('/api/admin/about', adminAboutRouter);
 app.use('/api/admin/hero', adminHeroRouter);
 app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin/content', adminContentRouter);
-app.use('/api/admin', adminAuthRouter); // login, me and profile come first
+app.use('/api/admin', adminAuthRouter); // login, me, profile and profile photo come first
 app.use('/api/admin', adminRouter);
 app.use('/api/admin', adminCatalogRouter);
 app.use('/api/admin', adminReportsRouter);
@@ -145,6 +149,7 @@ app.use((err, _req, res, next) => {
   if (err.status && err.status < 600 && err.expose !== false && typeof err.message === 'string') {
     return res.status(err.status).json({ error: err.message });
   }
+  if (err.code === 'ER_NET_PACKET_TOO_LARGE') return res.status(413).json({ error: 'This image is too large for the database settings. Use a smaller photo.' });
   if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'This value already exists' });
   if (err.code === 'ER_NO_REFERENCED_ROW_2') return res.status(400).json({ error: 'Invalid reference' });
   if (err.code === 'ER_ROW_IS_REFERENCED_2') return res.status(409).json({ error: 'This item is still in use' });

@@ -1,24 +1,27 @@
 import multer from 'multer';
 import fs from 'fs';
-import fsp from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { deleteMedia, saveMedia } from '../services/media.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// On a real host, point UPLOADS_DIR at a permanent disk (see the deployment guide at the end).
+
+// Old photos saved on the server disk before the database storage existed (still served if present).
 export const uploadsDir = process.env.UPLOADS_DIR
   ? path.resolve(process.env.UPLOADS_DIR)
   : path.join(__dirname, '..', '..', 'uploads');
-fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+} catch (e) {
+  /* a read-only disk is fine: new photos go to the database */
+}
 
+// The file extension is chosen by the server from the verified type, never from the uploaded file name.
 const EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 
 const raw = multer({
-  storage: multer.diskStorage({
-    destination: uploadsDir,
-    filename: (_req, file, cb) => cb(null, `${crypto.randomUUID()}${EXT[file.mimetype]}`),
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 8 },
   fileFilter: (_req, file, cb) => cb(null, Boolean(EXT[file.mimetype])),
 });
@@ -30,44 +33,48 @@ function detectType(buf) {
   return null;
 }
 
-async function readHead(filePath) {
-  const handle = await fsp.open(filePath, 'r');
-  try {
-    const buf = Buffer.alloc(12);
-    const { bytesRead } = await handle.read(buf, 0, 12, 0);
-    return buf.subarray(0, bytesRead);
-  } finally {
-    await handle.close();
-  }
-}
-
-export function removeFiles(files) {
-  (files || []).forEach((f) => fs.unlink(f.path, () => {}));
-}
-
-export function deleteUploadedFile(url) {
-  if (url && String(url).startsWith('/uploads/')) {
-    fs.unlink(path.join(uploadsDir, path.basename(url)), () => {});
-  }
-}
-
 function collectFiles(req) {
   if (req.files) return Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
   return req.file ? [req.file] : [];
 }
 
-async function verify(req, res, next) {
+// Removes photos from the database (used when a request fails after the upload).
+export function removeFiles(files) {
+  (files || []).forEach((f) => {
+    if (f && f.filename) deleteMedia(f.filename).catch(() => {});
+  });
+}
+
+// Deletes a stored photo by its address, for example /uploads/abc.jpg
+export function deleteUploadedFile(url) {
+  if (url && String(url).startsWith('/uploads/')) {
+    const name = path.basename(String(url));
+    deleteMedia(name).catch(() => {});
+    fs.unlink(path.join(uploadsDir, name), () => {});
+  }
+}
+
+// Checks the real file content (not only the type sent by the browser), then saves it in the database.
+async function verifyAndStore(req, res, next) {
+  const saved = [];
   try {
     const files = collectFiles(req);
     for (const f of files) {
-      const type = detectType(await readHead(f.path));
+      const type = f.buffer ? detectType(f.buffer) : null;
       if (!type || type !== f.mimetype) {
-        removeFiles(files);
         return res.status(400).json({ error: 'Only real JPG, PNG or WebP images are allowed.' });
       }
     }
+    for (const f of files) {
+      const name = `${crypto.randomUUID()}${EXT[f.mimetype]}`;
+      await saveMedia({ name, mime: f.mimetype, buffer: f.buffer });
+      saved.push(name);
+      f.filename = name; // the routes use this name to build /uploads/<name>
+      f.buffer = undefined; // free the memory
+    }
     return next();
   } catch (err) {
+    await Promise.all(saved.map((n) => deleteMedia(n).catch(() => {})));
     return next(err);
   }
 }
@@ -89,7 +96,8 @@ function guard(middleware) {
     });
 }
 
+// router.post('/', uploadImages.single('image'), handler)
 export const uploadImages = {
-  single: (field) => [guard(raw.single(field)), verify],
-  array: (field, max = 8) => [guard(raw.array(field, max)), verify],
+  single: (field) => [guard(raw.single(field)), verifyAndStore],
+  array: (field, max = 8) => [guard(raw.array(field, max)), verifyAndStore],
 };

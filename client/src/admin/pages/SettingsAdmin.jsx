@@ -17,7 +17,9 @@ const GROUPS = [
 function ImageBox({ title, hint, value, kind, onChanged, fb }) {
   const { t } = useLang();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   const url = assetUrl(value);
+  useEffect(() => setFailed(false), [url]);
 
   const send = async (fn) => {
     setBusy(true);
@@ -42,8 +44,8 @@ function ImageBox({ title, hint, value, kind, onChanged, fb }) {
       <p className="text-sm font-medium">{title}</p>
       <p className="mt-0.5 text-xs text-stone-500">{hint}</p>
       <div className="mt-3 flex flex-wrap items-center gap-4">
-        <span className="flex h-20 w-32 items-center justify-center overflow-hidden rounded-xl border border-sand-200 bg-sand-100 text-xs text-stone-500 dark:border-stone-700 dark:bg-stone-800">
-          {url ? <img src={url} alt="" className="h-full w-full object-contain p-1" /> : t('a_noLogo')}
+        <span className="flex h-20 w-32 items-center justify-center overflow-hidden rounded-xl border border-sand-200 bg-sand-100 p-1 text-center text-xs text-stone-500 dark:border-stone-700 dark:bg-stone-800">
+          {url && !failed ? <img src={url} alt="" onError={() => setFailed(true)} className="h-full w-full object-contain" /> : url ? t('a_imageMissing') : t('a_noLogo')}
         </span>
         <label className={`${btnGhost} cursor-pointer ${busy ? 'pointer-events-none opacity-60' : ''}`}>
           <Upload size={16} /> {url ? t('a_replaceImage') : t('a_uploadImage')}

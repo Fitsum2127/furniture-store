@@ -3,12 +3,15 @@ import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
 import { requireAdmin, signAdminToken } from '../middleware/auth.js';
 import { loginLimiter } from '../middleware/rateLimit.js';
+import { deleteUploadedFile, removeFiles, uploadImages } from '../middleware/upload.js';
 import { HttpError, cleanText } from '../middleware/validate.js';
+import { ensureSchema } from '../services/schema.js';
 
 const router = Router();
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 12);
 const USERNAME_RE = /^[a-z0-9._-]{3,40}$/;
-const view = (a) => ({ id: a.id, name: a.name, username: a.username });
+const view = (a) => ({ id: a.id, name: a.name, username: a.username, avatarUrl: a.avatar_url || null });
+const findAdmin = async (id) => (await pool.query('SELECT * FROM admins WHERE id = ?', [id]))[0][0];
 
 // Login with the username (the old email still works too).
 router.post('/login', loginLimiter, async (req, res) => {
@@ -22,9 +25,9 @@ router.post('/login', loginLimiter, async (req, res) => {
 });
 
 router.get('/me', requireAdmin, async (req, res) => {
-  const [rows] = await pool.query('SELECT id, name, username FROM admins WHERE id = ?', [req.admin.id]);
-  if (!rows[0]) throw new HttpError(401, 'Login required');
-  res.json({ admin: view(rows[0]) });
+  const admin = await findAdmin(req.admin.id);
+  if (!admin) throw new HttpError(401, 'Login required');
+  res.json({ admin: view(admin) });
 });
 
 router.put('/profile', requireAdmin, async (req, res) => {
@@ -39,8 +42,33 @@ router.put('/profile', requireAdmin, async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'This username is already used');
     throw err;
   }
-  const updated = (await pool.query('SELECT id, name, username FROM admins WHERE id = ?', [req.admin.id]))[0][0];
+  const updated = await findAdmin(req.admin.id);
   res.json({ admin: view(updated), token: signAdminToken(updated) });
+});
+
+// Add or change the profile photo. The login check runs before the upload is accepted.
+router.post('/profile/photo', requireAdmin, uploadImages.single('image'), async (req, res) => {
+  try {
+    await ensureSchema();
+    if (!req.file) throw new HttpError(400, 'Please choose a JPG, PNG or WebP photo (up to 5 MB).');
+    const current = await findAdmin(req.admin.id);
+    if (!current) throw new HttpError(401, 'Login required');
+    await pool.query('UPDATE admins SET avatar_url = ? WHERE id = ?', [`/uploads/${req.file.filename}`, req.admin.id]);
+    deleteUploadedFile(current.avatar_url);
+    res.json({ admin: view(await findAdmin(req.admin.id)) });
+  } catch (err) {
+    removeFiles(req.file ? [req.file] : []);
+    throw err;
+  }
+});
+
+router.delete('/profile/photo', requireAdmin, async (req, res) => {
+  await ensureSchema();
+  const current = await findAdmin(req.admin.id);
+  if (!current) throw new HttpError(401, 'Login required');
+  await pool.query('UPDATE admins SET avatar_url = NULL WHERE id = ?', [req.admin.id]);
+  deleteUploadedFile(current.avatar_url);
+  res.json({ admin: view(await findAdmin(req.admin.id)) });
 });
 
 export default router;
