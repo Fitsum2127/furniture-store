@@ -8,7 +8,7 @@ INSERT INTO categories (slug, name_en, name_am) VALUES
 ('office', 'Office', 'ቢሮ');
 
 INSERT INTO products (sku, category_id, name_en, name_am, tagline_en, tagline_am, description_en, description_am, price, old_price, stock) VALUES
-('BETE-SOFA-3S', 1, 'Abyssinia 3-Seater Sofa', 'አቢሲኒያ ባለ3 መቀመጫ ሶፋ',
+('fitse-SOFA-3S', 1, 'Abyssinia 3-Seater Sofa', 'አቢሲኒያ ባለ3 መቀመጫ ሶፋ',
  'Solid mahogany frame. Built for generations.', 'ጠንካራ የማሆጋኒ ፍሬም። ለትውልድ የተሠራ።',
  'A hand-finished three-seater with a kiln-dried solid mahogany frame and high-density foam.',
  'በእጅ የተጠናቀቀ ባለ3 መቀመጫ ሶፋ፤ በደረቀ ጠንካራ የማሆጋኒ ፍሬም እና ከፍተኛ ጥግግት ባለው ስፖንጅ የተሠራ።',

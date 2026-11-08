@@ -3,7 +3,7 @@ import useFetch from '../hooks/useFetch.js';
 import { api, assetUrl } from '../lib/api.js';
 
 const DEFAULTS = {
-  business_name: 'Bete Furniture', phone: '', whatsapp: '', email: '', telegram: '', facebook: '', instagram: '', tiktok: '',
+  business_name: 'fitse Furniture', phone: '', whatsapp: '', email: '', telegram: '', facebook: '', instagram: '', tiktok: '',
   address_en: '', address_am: '', hours_en: '', hours_am: '', currency: 'ETB', delivery_fee: '0',
   free_delivery_cities: '', free_delivery_min_subtotal: '', payment_cod_enabled: '1', payment_chapa_enabled: '0', payment_telebirr_enabled: '0',
   logo_url: '', favicon_url: '',

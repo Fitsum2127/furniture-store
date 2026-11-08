@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS about_sections (
 
 INSERT INTO about_sections (title_en, title_am, body_en, body_am, image_url, sort_order) VALUES
 ('Our Story', 'ታሪካችን',
- 'Bete Furniture started with a simple idea: every home deserves furniture that is strong, beautiful and fairly priced.\nWe design and build our pieces in Ethiopia, and we choose every material ourselves.',
+ 'fitse Furniture started with a simple idea: every home deserves furniture that is strong, beautiful and fairly priced.\nWe design and build our pieces in Ethiopia, and we choose every material ourselves.',
  'ቤቴ ፈርኒቸር የጀመረው በቀላል ሃሳብ ነው፤ እያንዳንዱ ቤት ጠንካራ፣ ውብና ተመጣጣኝ ዋጋ ያለው የቤት ዕቃ ይገባዋል።\nዕቃዎቻችንን በኢትዮጵያ እንሠራለን፤ እያንዳንዱን ቁሳቁስም ራሳችን እንመርጣለን።',
  'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1400&q=80', 0),
 ('Craftsmanship and Materials', 'የእጅ ጥበብና ቁሳቁስ',

@@ -2,7 +2,7 @@ import pool from '../config/db.js';
 
 // Business settings. Empty values mean "the client has not provided this yet".
 export const DEFAULTS = {
-  business_name: 'Bete Furniture',
+  business_name: 'fitse Furniture',
   phone: '',
   whatsapp: '',
   email: '',

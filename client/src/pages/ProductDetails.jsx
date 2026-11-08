@@ -79,7 +79,7 @@ export default function ProductDetails() {
 
   const product = useMemo(() => (data ? buildProduct(data) : null), [data]);
 
-  const businessName = settings.business_name || 'Bete Furniture';
+  const businessName = settings.business_name || 'fitse Furniture';
   useDocumentMeta(
     product ? `${tr(product.name)} | ${businessName}` : businessName,
     product ? (tr(product.tagline) || tr(product.description)).slice(0, 155) : undefined
