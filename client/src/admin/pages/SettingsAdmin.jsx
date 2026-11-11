@@ -10,9 +10,12 @@ import { ErrorBox, Loading, PageHeader, btnGhost, btnPrimary, card, inputClass }
 
 const GROUPS = [
   ['a_g_business', ['business_name', 'phone', 'whatsapp', 'email', 'address_en', 'address_am', 'hours_en', 'hours_am']],
+  ['a_g_map', ['map_embed', 'map_query']],
   ['a_g_social', ['telegram', 'facebook', 'instagram', 'tiktok']],
   ['a_g_delivery', ['delivery_fee', 'free_delivery_min_subtotal', 'free_delivery_cities']],
 ];
+
+const HINTS = { map_embed: 'a_mapEmbedHint', map_query: 'a_mapHint' };
 
 function ImageBox({ title, hint, value, kind, onChanged, fb }) {
   const { t } = useLang();
@@ -108,7 +111,19 @@ export default function SettingsAdmin() {
             {keys.map((key) => (
               <label key={key} className="block">
                 <span className="mb-1.5 block text-sm font-medium">{t(`a_s_${key}`)}</span>
-                <input value={s[key] || ''} onChange={(e) => setS({ ...s, [key]: e.target.value })} className={inputClass} />
+                {key === 'map_embed' ? (
+                  <textarea
+                    value={s[key] || ''}
+                    onChange={(e) => setS({ ...s, [key]: e.target.value })}
+                    rows={4}
+                    spellCheck={false}
+                    placeholder='<iframe src="https://www.google.com/maps/embed?pb=..." ...></iframe>'
+                    className={`${inputClass} resize-y font-mono text-xs`}
+                  />
+                ) : (
+                  <input value={s[key] || ''} onChange={(e) => setS({ ...s, [key]: e.target.value })} className={inputClass} />
+                )}
+                {HINTS[key] && <span className="mt-1 block text-xs text-stone-500">{t(HINTS[key])}</span>}
               </label>
             ))}
           </section>

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Send, Mail, Clock, MapPin, MessageCircle } from 'lucide-react';
+import { Phone, Send, Mail, MessageCircle } from 'lucide-react';
 import PageTransition from '../components/PageTransition.jsx';
+import LocationSection from '../components/LocationSection.jsx';
 import { useLang } from '../context/LanguageContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { api } from '../lib/api.js';
 
 export default function Contact() {
-  const { t, tr } = useLang();
+  const { t } = useLang();
   const { settings: s } = useSettings();
   const [form, setForm] = useState({ name: '', phone: '', email: '', body: '' });
   const [status, setStatus] = useState('idle');
@@ -21,8 +22,6 @@ export default function Contact() {
     s.telegram && { icon: Send, title: t('telegram'), text: s.telegram.replace(/^https?:\/\//, ''), href: s.telegram },
     s.email && { icon: Mail, title: t('emailUs'), text: s.email, href: `mailto:${s.email}` },
   ].filter(Boolean);
-  const hours = tr({ en: s.hours_en, am: s.hours_am || s.hours_en });
-  const address = tr({ en: s.address_en, am: s.address_am || s.address_en });
 
   const submit = async (e) => {
     e.preventDefault();
@@ -45,7 +44,7 @@ export default function Contact() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
+      <div className="mx-auto max-w-4xl px-4 pt-14 sm:px-6">
         <div className="text-center">
           <h1 className="text-3xl font-semibold sm:text-4xl">{t('contactTitle')}</h1>
           <div className="mx-auto mt-3 h-0.5 w-10 bg-sand-400" />
@@ -77,24 +76,9 @@ export default function Contact() {
             {status === 'sending' ? t('sending') : t('sendMessage')}
           </button>
         </form>
-
-        {(hours || address) && (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {hours && (
-              <div className="flex gap-4 rounded-2xl bg-sand-100 p-6 dark:bg-stone-900">
-                <Clock className="flex-none text-olive" size={22} />
-                <div><p className="font-semibold">{t('hours')}</p><p className="mt-1 whitespace-pre-line text-sm text-stone-600 dark:text-stone-400">{hours}</p></div>
-              </div>
-            )}
-            {address && (
-              <div className="flex gap-4 rounded-2xl bg-sand-100 p-6 dark:bg-stone-900">
-                <MapPin className="flex-none text-olive" size={22} />
-                <div><p className="font-semibold">{t('visit')}</p><p className="mt-1 whitespace-pre-line text-sm text-stone-600 dark:text-stone-400">{address}</p></div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      <LocationSection showPhoneEmail={false} showContactButton={false} />
     </PageTransition>
   );
 }

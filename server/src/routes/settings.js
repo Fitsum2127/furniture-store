@@ -7,7 +7,7 @@ import { HttpError, cleanText, isEmail, isHttpUrl, looksLikePhone } from '../mid
 
 const router = Router();
 
-// Public: business information used by the storefront (contact details, delivery, logo, enabled payment methods).
+// Public: business information used by the storefront (contact details, delivery, logo, map, enabled payment methods).
 router.get('/', async (_req, res) => {
   res.set('Cache-Control', 'public, max-age=30');
   res.json(await getSettings());
@@ -32,6 +32,27 @@ const GATEWAY_ENV = {
   payment_chapa_enabled: ['CHAPA_SECRET_KEY', 'Chapa'],
   payment_telebirr_enabled: ['TELEBIRR_APP_KEY', 'Telebirr'],
 };
+
+// The owner may paste the whole <iframe ...> code or only the link. Only a real Google Maps embed link is kept.
+function readMapEmbed(v) {
+  if (v === '') return '';
+  if (v.length > 4000) throw new HttpError(400, 'The map code is too long.');
+  const found = /<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i.exec(v);
+  const raw = (found ? found[1] : v).replace(/&amp;/g, '&').trim();
+  let url;
+  try {
+    url = new URL(raw);
+  } catch (err) {
+    url = null;
+  }
+  if (!url || url.protocol !== 'https:' || url.hostname !== 'www.google.com' || !url.pathname.startsWith('/maps/embed') || raw.length > 2000) {
+    throw new HttpError(
+      400,
+      'Paste the "Embed a map" code from Google Maps. The link inside it must start with https://www.google.com/maps/embed'
+    );
+  }
+  return raw;
+}
 
 function validateSetting(key, value) {
   const v = cleanText(value);
@@ -58,6 +79,8 @@ function validateSetting(key, value) {
     if (v.length > 300 || !isHttpUrl(v)) throw new HttpError(400, `${key} must be a full link starting with https://`);
     return v;
   }
+
+  if (key === 'map_embed') return readMapEmbed(v);
 
   switch (key) {
     case 'email':
