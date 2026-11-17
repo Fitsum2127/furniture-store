@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronDown, Phone } from 'lucide-react';
+import { ChevronDown, Phone, Trash2, XCircle } from 'lucide-react';
 import useFetch from '../../hooks/useFetch.js';
 import { useLang } from '../../context/LanguageContext.jsx';
 import { onImgError } from '../../lib/api.js';
 import { adminApi } from '../adminApi.js';
+import ActionMenu from '../ActionMenu.jsx';
 import { useFeedback } from '../feedback.jsx';
 import { Badge, ErrorBox, Loading, PageHeader, card, inputClass, payColor, statusColor, useFmt, useLabels } from '../ui.jsx';
 
@@ -52,18 +53,58 @@ function OrderRow({ order, onChanged, autoOpen, fb }) {
     }
   };
 
+  // Permanent deletion: the order also disappears from the sales reports.
+  const doDelete = async (typed) => {
+    try {
+      const r = await adminApi(`/orders/${order.id}`, { method: 'DELETE', body: JSON.stringify({ confirm: typed || '' }) });
+      fb.success(t(r.stockRestored ? 'a_orderDeletedStock' : 'a_orderDeleted', { n: order.order_number }));
+      onChanged();
+    } catch (e) {
+      fb.error(e.message);
+    }
+  };
+
+  const remove = () => {
+    if (order.payment_status === 'paid') {
+      // A paid order is a financial record: the admin must type the order number.
+      fb.prompt({
+        text: `${order.order_number} · ${t('a_confirmDeletePaidOrder', { n: order.order_number })}`,
+        placeholder: t('a_orderNumberPh'),
+        confirmLabel: t('a_yesDeleteOrder'),
+        danger: true,
+        validate: (v) => (v.trim().toUpperCase() === order.order_number ? '' : t('a_errTypeNumber', { n: order.order_number })),
+        onConfirm: (v) => doDelete(v.trim().toUpperCase()),
+      });
+    } else {
+      fb.confirm({
+        text: t('a_confirmDeleteOrder', { n: order.order_number }),
+        confirmLabel: t('a_yesDeleteOrder'),
+        danger: true,
+        onConfirm: () => doDelete(''),
+      });
+    }
+  };
+
   return (
     <li className={card}>
-      <button onClick={() => setOpen((o) => !o)} className="flex w-full flex-wrap items-center gap-3 p-4 text-left" aria-expanded={open}>
-        <div className="min-w-0 flex-1 basis-44">
-          <p className="font-medium">{order.order_number} · {order.customer_name}</p>
-          <p className="text-xs text-stone-500">{fmtDate(order.created_at)} · {t('a_nItems', { n: order.items_count })} · {order.city} · {order.customer_id ? t('a_accountLabel') : t('a_guestLabel')}</p>
-        </div>
-        <p className="font-semibold">{money(order.total)}</p>
-        <Badge color={statusColor[order.status]}>{st(order.status)}</Badge>
-        <Badge color={payColor[order.payment_status]}>{method(order.payment_method)} · {pay(order.payment_status)}</Badge>
-        <ChevronDown size={18} className={`transition ${open ? 'rotate-180' : ''}`} />
-      </button>
+      <div className="flex items-center gap-1 pr-3">
+        <button onClick={() => setOpen((o) => !o)} className="flex min-w-0 flex-1 flex-wrap items-center gap-3 p-4 text-left" aria-expanded={open}>
+          <div className="min-w-0 flex-1 basis-44">
+            <p className="font-medium">{order.order_number} · {order.customer_name}</p>
+            <p className="text-xs text-stone-500">{fmtDate(order.created_at)} · {t('a_nItems', { n: order.items_count })} · {order.city} · {order.customer_id ? t('a_accountLabel') : t('a_guestLabel')}</p>
+          </div>
+          <p className="font-semibold">{money(order.total)}</p>
+          <Badge color={statusColor[order.status]}>{st(order.status)}</Badge>
+          <Badge color={payColor[order.payment_status]}>{method(order.payment_method)} · {pay(order.payment_status)}</Badge>
+          <ChevronDown size={18} className={`transition ${open ? 'rotate-180' : ''}`} />
+        </button>
+        <ActionMenu
+          items={[
+            order.status !== 'cancelled' && order.payment_status !== 'paid' && { label: t('a_cancelOrderItem'), icon: XCircle, onClick: () => update({ status: 'cancelled' }) },
+            { label: t('a_deleteOrder'), icon: Trash2, danger: true, onClick: remove },
+          ]}
+        />
+      </div>
 
       {open && (
         <div className="space-y-4 border-t border-sand-200 p-4 dark:border-stone-800">

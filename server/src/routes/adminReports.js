@@ -2,6 +2,7 @@ import { Router } from 'express';
 import pool from '../config/db.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { HttpError, cleanText, escapeLike, toInt } from '../middleware/validate.js';
+import { syncProductStock } from '../services/inventory.js';
 
 const router = Router();
 router.use(requireAdmin);
@@ -61,6 +62,61 @@ router.get('/reports/top-products', async (req, res) => {
     [days]
   );
   res.json(rows.map((r) => ({ ...r, units: Number(r.units), revenue: Number(r.revenue) })));
+});
+
+/* ---------- permanent order deletion ----------
+   The reports and the dashboard are calculated from the orders table, so a deleted order
+   disappears from them. The order items and the payment record are removed with it. */
+router.delete('/orders/:id', async (req, res) => {
+  const id = toInt(req.params.id, { min: 1 });
+  if (!id) throw new HttpError(404, 'Order not found');
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[order]] = await conn.query(
+      'SELECT id, order_number, status, payment_status, total FROM orders WHERE id = ? FOR UPDATE',
+      [id]
+    );
+    if (!order) throw new HttpError(404, 'Order not found');
+
+    // A paid order is a financial record: the admin must type its order number to delete it.
+    const typed = cleanText(req.body && req.body.confirm).toUpperCase();
+    if (order.payment_status === 'paid' && typed !== order.order_number) {
+      throw new HttpError(409, 'This order is marked as paid. Type its order number to confirm the deletion.');
+    }
+
+    // New and Confirmed orders have not left the shop yet, so their items go back into stock.
+    // Shipped and Delivered orders already left. Cancelled orders were returned when they were cancelled.
+    let stockRestored = false;
+    if (['new', 'confirmed'].includes(order.status)) {
+      const [items] = await conn.query(
+        'SELECT product_id, variant_id, qty FROM order_items WHERE order_id = ? ORDER BY product_id, variant_id',
+        [id]
+      );
+      for (const it of items) {
+        if (it.variant_id) {
+          await conn.query('UPDATE product_variants SET stock = stock + ? WHERE id = ?', [it.qty, it.variant_id]);
+          await syncProductStock(conn, it.product_id);
+        } else {
+          await conn.query('UPDATE products SET stock = stock + ? WHERE id = ?', [it.qty, it.product_id]);
+        }
+      }
+      stockRestored = items.length > 0;
+    }
+
+    await conn.query('DELETE FROM orders WHERE id = ?', [id]);
+    await conn.commit();
+
+    console.log(`Order ${order.order_number} (total ${order.total}) was deleted by admin ${req.admin.id}`);
+    res.json({ deleted: true, stockRestored });
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 });
 
 /* ---------- customers ---------- */
