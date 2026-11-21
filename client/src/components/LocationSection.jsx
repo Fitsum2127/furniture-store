@@ -8,7 +8,7 @@ import { slow } from '../lib/motion.js';
 const GOOGLE_MAPS = /^https:\/\/www\.google\.com\/maps/;
 
 // The pasted Google embed link, or a simple map made from the written address / coordinates.
-function mapSource(s) {
+export function mapSource(s) {
   const embed = String(s.map_embed || '').trim();
   if (embed && GOOGLE_MAPS.test(embed)) return embed;
   const q = String(s.map_query || '').trim();
@@ -16,7 +16,7 @@ function mapSource(s) {
 }
 
 // Where the "Get directions" button goes: the typed address or coordinates, otherwise the pin inside the embed code.
-function directionsTarget(s) {
+export function directionsTarget(s) {
   const q = String(s.map_query || '').trim();
   if (q) return q;
   const m = /!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/.exec(String(s.map_embed || ''));
@@ -24,15 +24,39 @@ function directionsTarget(s) {
 }
 
 // Address, phone, email and hours on the left, the Google map on the right.
+// With bannerOnly the section is only the map, as wide as the screen (used on the Contact page).
 // Everything comes from Admin > Business settings. Nothing is shown for empty fields.
-export default function LocationSection({ showPhoneEmail = true, showContactButton = true, headingTag = 'h2' }) {
+export default function LocationSection({ showPhoneEmail = true, showContactButton = true, headingTag = 'h2', bannerOnly = false }) {
   const { t, tr } = useLang();
   const { settings: s } = useSettings();
   const Heading = headingTag;
 
+  const src = mapSource(s);
+
+  if (bannerOnly) {
+    if (!src) return null;
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={slow(0)}
+        className="mt-14 w-full bg-sand-100 dark:bg-stone-900"
+      >
+        <iframe
+          title={t('mapFrame')}
+          src={src}
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+          className="block h-[22rem] w-full border-0 sm:h-[28rem] lg:h-[34rem]"
+        />
+      </motion.div>
+    );
+  }
+
   const address = tr({ en: s.address_en, am: s.address_am || s.address_en });
   const hours = tr({ en: s.hours_en, am: s.hours_am || s.hours_en });
-  const src = mapSource(s);
   const target = directionsTarget(s);
 
   const rows = [

@@ -78,7 +78,8 @@ export default function Contact() {
         </form>
       </div>
 
-      <LocationSection showPhoneEmail={false} showContactButton={false} />
+      {/* Only the map, as wide as the screen */}
+      <LocationSection bannerOnly />
     </PageTransition>
   );
 }
